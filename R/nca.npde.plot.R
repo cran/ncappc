@@ -26,8 +26,8 @@
 
 nca.npde.plot <- function(plotdata,xvar=NULL,npdecol=NULL,figlbl=NULL,cunit="[M].[L]^-3",tunit="[T]"){
   
-  "npde" <- "type" <- "mcil" <- "mciu" <- "sdu" <- "sducil" <- "sduciu" <- "..density.." <- "sdl" <- "XVAR" <- "melt" <- "xlab" <- "ylab" <- "theme" <- "element_text" <- "unit" <- "geom_point" <- "facet_wrap" <- "scale_linetype_manual" <- "scale_color_manual" <- "guides" <- "guide_legend" <- "element_rect" <- "geom_histogram" <- "aes" <- "geom_vline" <- "ggplot" <- "labs" <- "..count.." <- "..PANEL.." <- "na.omit" <- "sd" <- "qt" <- "qchisq" <- "scale_y_continuous" <- "percent" <- NULL
-  rm(list=c("npde","type","mcil","mciu","sdu","sducil","sduciu","..density..","sdl","XVAR","melt","xlab","ylab","theme","element_text","unit","geom_point","facet_wrap","scale_linetype_manual","scale_color_manual","guides","guide_legend","element_rect","geom_histogram","aes","geom_vline","ggplot","labs","..count..","..PANEL..","na.omit","sd","qt","qchisq","scale_y_continuous","percent"))
+  "npde" <- "type" <- "mcil" <- "mciu" <- "sdu" <- "sducil" <- "sduciu" <- "..density.." <- "sdl" <- "XVAR" <- "melt" <- "xlab" <- "ylab" <- "theme" <- "element_text" <- "unit" <- "geom_point" <- "facet_wrap" <- "scale_linetype_manual" <- "scale_color_manual" <- "guides" <- "guide_legend" <- "element_rect" <- "geom_histogram" <- "aes" <- "geom_vline" <- "ggplot" <- "labs" <- "..count.." <- "..PANEL.." <- "na.omit" <- "sd" <- "qt" <- "qchisq" <- "scale_y_continuous" <- "percent" <- "sdcil" <- "sdciu" <- NULL
+  rm(list=c("npde","type","mcil","mciu","sdu","sducil","sduciu","..density..","sdl","XVAR","melt","xlab","ylab","theme","element_text","unit","geom_point","facet_wrap","scale_linetype_manual","scale_color_manual","guides","guide_legend","element_rect","geom_histogram","aes","geom_vline","ggplot","labs","..count..","..PANEL..","na.omit","sd","qt","qchisq","scale_y_continuous","percent","sdcil","sdciu"))
   
   if (!is.data.frame(plotdata)) stop("plotdata must be a data frame.")
   if (is.null(xvar)){
@@ -77,7 +77,12 @@ nca.npde.plot <- function(plotdata,xvar=NULL,npdecol=NULL,figlbl=NULL,cunit="[M]
       longdata[longdata$type==npdecol[i],"ci"]     <- abs(qt(0.025,length(npdeval)-1)*(sd(npdeval)/sqrt(length(npdeval))))
       longdata[longdata$type==npdecol[i],"sd1"]    <- abs(sd(npdeval)-(sd(npdeval)*sqrt((length(npdeval)-1)/qchisq(0.975,length(npdeval)-1))))
       longdata[longdata$type==npdecol[i],"sd2"]    <- abs(sd(npdeval)-(sd(npdeval)*sqrt((length(npdeval)-1)/qchisq(0.025,length(npdeval)-1))))
+      longdata[longdata$type==npdecol[i],"sdcil"]  <- sd(npdeval)*sqrt((length(npdeval)-1)/qchisq(0.975,length(npdeval)-1))
+      longdata[longdata$type==npdecol[i],"sdciu"]  <- sd(npdeval)*sqrt((length(npdeval)-1)/qchisq(0.025,length(npdeval)-1))
     }
+    
+    longdata$FCT    <- paste0(longdata$type,"\nmean=", signif(longdata$mean,3), "+/-", signif(longdata$ci,3), "\nSD=", signif(longdata$sd,3), "(-", signif(longdata$sd1,3), ",+", signif(longdata$sd2,3),")")
+    
     longdata$mcil   <- longdata$mean - longdata$ci
     longdata$mciu   <- longdata$mean + longdata$ci
     longdata$sdl    <- longdata$mean - longdata$sd
@@ -106,7 +111,7 @@ nca.npde.plot <- function(plotdata,xvar=NULL,npdecol=NULL,figlbl=NULL,cunit="[M]
       }
     }
     longdata$type <- factor(longdata$type, levels=fctNm$prmNm, labels=fctNm$prmUnit)
-    forestdata    <- subset(longdata[!duplicated(longdata$type),], select=c(type,mean,mcil,mciu,sdu,sducil,sduciu))
+    forestdata    <- subset(longdata[!duplicated(longdata$type),], select=c(type,mean,mcil,mciu,sd,sdcil,sdciu))
     
     # ggplot options for individual NPDE plots
     nc    <- ifelse(length(npdecol)<2, 1, ifelse(length(npdecol)>=2 & length(npdecol)<=6, 2, 3))
@@ -121,8 +126,8 @@ nca.npde.plot <- function(plotdata,xvar=NULL,npdecol=NULL,figlbl=NULL,cunit="[M]
                        theme(strip.text.x = element_text(size=10, face="bold")))
     
     # ggplot options for histogram of NPDE
-    ggOpt_histnpde <- list(scale_linetype_manual(name="",values=c("meanNormal"="solid","meanNPDE"="solid","+/-(SD)"="dashed")),
-                           scale_color_manual(name="",values=c("meanNormal"="red","meanNPDE"="blue","+/-(SD)"="blue")),
+    ggOpt_histnpde <- list(scale_linetype_manual(name="",values=c("meanNormal"="solid","meanNPDE"="solid","SD"="dashed")),
+                           scale_color_manual(name="",values=c("meanNormal"="red","meanNPDE"="blue","SD"="blue")),
                            xlab("\nNPDE"), ylab(""),
                            guides(fill = guide_legend(override.aes = list(linetype = 0 )), shape = guide_legend(override.aes = list(linetype = 0 ))),
                            theme(plot.title = element_text(size=10,face="bold"),
@@ -140,9 +145,9 @@ nca.npde.plot <- function(plotdata,xvar=NULL,npdecol=NULL,figlbl=NULL,cunit="[M]
                            scale_y_continuous(labels = percent),
                            geom_vline(aes(xintercept=0, color="meanNormal", lty="meanNormal"), size=1, show_guide=T),
                            geom_vline(aes(xintercept=as.numeric(mean), color="meanNPDE", lty="meanNPDE"), size=1),
-                           geom_vline(aes(xintercept=as.numeric(sdl), color="+/-(SD)", lty="+/-(SD)"), size=1),
-                           geom_vline(aes(xintercept=as.numeric(sdu), color="+/-(SD)", lty="+/-(SD)"), size=1),
-                           facet_wrap(~type, ncol=nc, scales="free"),
+                           geom_vline(aes(xintercept=as.numeric(sdl), color="SD", lty="SD"), size=1),
+                           geom_vline(aes(xintercept=as.numeric(sdu), color="SD", lty="SD"), size=1),
+                           facet_wrap(~FCT, ncol=nc, scales="free"),
                            theme(strip.text.x = element_text(size=10, face="bold")))
     
     if (is.null(figlbl)){

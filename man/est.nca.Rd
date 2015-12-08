@@ -5,11 +5,11 @@
 \title{Estimates individual NCA metrics from concentration vs time data.
 data.}
 \usage{
-est.nca(time, conc, backExtrp = "FALSE", negConcExcl = "FALSE",
-  doseType = "ns", adminType = "extravascular", doseNm = NULL,
-  dose = NULL, doseNumber = NULL, doseAmt = NULL, method = "linear",
-  AUCTimeRange = NULL, LambdaTimeRange = NULL, LambdaExclude = NULL,
-  Tau = NULL, TI = NULL, simFile = NULL, dset = "obs")
+est.nca(time, conc, backExtrp = FALSE, negConcExcl = FALSE,
+  doseType = "ns", adminType = "extravascular", doseAmt = NULL,
+  method = "linear-log", AUCTimeRange = NULL, LambdaTimeRange = NULL,
+  LambdaExclude = NULL, doseTime = doseTime, Tau = NULL, TI = NULL,
+  simFile = NULL, dset = "obs")
 }
 \arguments{
 \item{time}{Numeric array for time}
@@ -17,9 +17,9 @@ est.nca(time, conc, backExtrp = "FALSE", negConcExcl = "FALSE",
 \item{conc}{Numeric array for concentration}
 
 \item{backExtrp}{If back-extrapolation is needed for AUC (TRUE or FALSE)
-(\strong{"FALSE"})}
+(\strong{FALSE})}
 
-\item{negConcExcl}{Exclude -ve conc (\strong{"FALSE"})}
+\item{negConcExcl}{Exclude -ve conc (\strong{FALSE})}
 
 \item{doseType}{Steady-state (ss) or nonsteady-state (ns) dose
 (\strong{"ns"})}
@@ -27,17 +27,9 @@ est.nca(time, conc, backExtrp = "FALSE", negConcExcl = "FALSE",
 \item{adminType}{Route of administration
 (iv-bolus,iv-infusion,extravascular) (\strong{"extravascular"})}
 
-\item{doseNm}{Column name to specify dose identifiers (\strong{"NULL"})}
-
-\item{dose}{Dose identifiers used in the entire data (c(1,2))
-(\strong{"NULL"})}
-
-\item{doseNumber}{Dose identifier used in this estimation (1)
-(\strong{"NULL"})}
-
 \item{doseAmt}{Dose amounts (\strong{"NULL"})}
 
-\item{method}{linear, loglinear or mixed (\strong{"linear"})}
+\item{method}{linear, log or linear-log (\strong{"linear-log"})}
 
 \item{AUCTimeRange}{User-defined window of time used to estimate AUC
 (\strong{"NULL"})}
@@ -47,6 +39,8 @@ rate-constant (\strong{"NULL"})}
 
 \item{LambdaExclude}{User-defined excluded observation time points for
 estimation of elimination rate-constant (\strong{"NULL"})}
+
+\item{doseTime}{Dose time prior to the first observation for steady-state data (\strong{\code{NULL}})}
 
 \item{Tau}{Dosing interval for steady-state data (\strong{"NULL"})}
 
@@ -95,7 +89,9 @@ below.
  \item \strong{No_points_Lambda_z} is the number of observed data points
  used to determine the best fitting regression line in the elimination
  phase.
- \item \strong{AUC_pBack_Ext} is the percentage of AUClast that is
+ \item \strong{AUC_pBack_Ext_obs} is the percentage of AUCINF_obs that is
+ contributed by the back extrapolation to estimate C0.
+ \item \strong{AUC_pBack_Ext_pred} is the percentage of AUCINF_pred that is
  contributed by the back extrapolation to estimate C0.
  \item \strong{AUClower_upper} is the AUC under the concentration-time
  profile within the user-specified window of time privided as the

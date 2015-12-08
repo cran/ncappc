@@ -35,8 +35,8 @@
 
 histpop.plot <- function(obsdata=outData,simdata=smeanData,figlbl=NULL,param=c("AUClast","Cmax"),cunit="[M].[L]^-3",tunit="[T]",spread="npi"){
   
-  "..density.." <- "TYPE" <- "obs" <- "sim" <- "arrangeGrob" <- "scale_linetype_manual" <- "scale_color_manual" <- "xlab" <- "ylab" <- "guides" <- "guide_legend" <- "theme" <- "element_text" <- "unit" <- "element_rect" <- "geom_histogram" <- "aes" <- "geom_vline" <- "melt" <- "ggplot" <- "labs" <- "coord_cartesian" <- "facet_wrap" <- "gtable_filter" <- "ggplot_gtable" <- "ggplot_build" <- "textGrob" <- "gpar" <- "..count.." <- "..PANEL.." <- "scale_y_continuous" <- "percent" <- "sd" <- "quantile" <- NULL
-  rm(list=c("..density..","TYPE","obs","sim","arrangeGrob","scale_linetype_manual","scale_color_manual","xlab","ylab","guides","guide_legend","theme","element_text","unit","element_rect","geom_histogram","aes","geom_vline","melt","ggplot","labs","coord_cartesian","facet_wrap","gtable_filter","ggplot_gtable","ggplot_build","textGrob","gpar","..count..","..PANEL..","scale_y_continuous","percent","sd","quantile"))
+  "..density.." <- "TYPE" <- "obs" <- "sim" <- "arrangeGrob" <- "scale_linetype_manual" <- "scale_color_manual" <- "xlab" <- "ylab" <- "guides" <- "guide_legend" <- "theme" <- "element_text" <- "unit" <- "element_rect" <- "geom_histogram" <- "aes" <- "geom_vline" <- "melt" <- "ggplot" <- "labs" <- "coord_cartesian" <- "facet_wrap" <- "gtable_filter" <- "ggplot_gtable" <- "ggplot_build" <- "textGrob" <- "gpar" <- "..count.." <- "..PANEL.." <- "scale_y_continuous" <- "percent" <- "sd" <- "quantile" <- "packageVersion" <- NULL
+  rm(list=c("..density..","TYPE","obs","sim","arrangeGrob","scale_linetype_manual","scale_color_manual","xlab","ylab","guides","guide_legend","theme","element_text","unit","element_rect","geom_histogram","aes","geom_vline","melt","ggplot","labs","coord_cartesian","facet_wrap","gtable_filter","ggplot_gtable","ggplot_build","textGrob","gpar","..count..","..PANEL..","scale_y_continuous","percent","sd","quantile","packageVersion"))
   
   outData <- obsdata; smeanData <- simdata
   
@@ -120,10 +120,25 @@ histpop.plot <- function(obsdata=outData,simdata=smeanData,figlbl=NULL,param=c("
   mylegend <- suppressMessages(suppressWarnings(gtable_filter(ggplot_gtable(ggplot_build(gplt[[1]])), "guide-box", trim=T)))
   lheight  <- sum(mylegend$heights)
   for (p in 1:npr){gplt[[p]] <- gplt[[p]] + theme(legend.position="none")}
-  gdr <- suppressMessages(suppressWarnings(do.call(arrangeGrob,
-                                                   c(gplt, list(main = textGrob(paste("Histogram of simulated population means (",figlbl,")\n(spread = ",devtag,")\n\n",sep=""),vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
-                                                                sub = textGrob("Value\n\n",vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
-                                                                ncol=nc)))))
+  
+  if(is.null(figlbl)){
+    Label <- paste("Histogram of simulated population means\n(spread = ",devtag,")\n\n",sep="")
+  }else{
+    Label <- paste("Histogram of simulated population means (",figlbl,")\n(spread = ",devtag,")\n\n",sep="")
+  }
+  
+  plot_args <- list(top = textGrob(Label,vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
+                    bottom = textGrob("Value\n\n",vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
+                    ncol=nc)
+  if(packageVersion("gridExtra") < "0.9.2"){
+    arg_names <- names(plot_args)
+    arg_names <- sub("top","main",arg_names)
+    arg_names <- sub("bottom","sub",arg_names)
+    names(plot_args) <- arg_names
+  }  
+  gdr <- suppressMessages(suppressWarnings(do.call(arrangeGrob,c(gplt,plot_args))))
+  #grid.arrange(gdr)
+  
   histpopgrob <- list(gdr=gdr,legend=mylegend,lheight=lheight)
   return(histpopgrob)
 }

@@ -42,7 +42,7 @@
 #' @param cunit Unit for concentration (\strong{"[M].[L]^-3"})
 #' @param tunit Unit for time (\strong{"[T]"})
 #' @param noPlot Perform only NCA calculations without any plot generation
-#'   (TRUE, FALSE) (\strong{"FALSE"})
+#'   (TRUE, FALSE) (\strong{FALSE})
 #'
 #' @return returns the observed data frame with added distance and simulation
 #'   mean of the nCA metrics, and a data frame with the PDE values of the NCA
@@ -52,10 +52,10 @@
 #' @export
 #'
 
-nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="npi",figlbl=NULL,calcparam=c("AUClast","Cmax"),diagparam=c("AUClast","Cmax"),cunit="[M].[L]^-3",tunit="[T]",noPlot="FALSE"){
+nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="npi",figlbl=NULL,calcparam=c("AUClast","Cmax"),diagparam=c("AUClast","Cmax"),cunit="[M].[L]^-3",tunit="[T]",noPlot=FALSE){
   
-  "type" <- "..density.." <- "oval" <- "mval" <- "devl" <- "devu" <- "sval" <- "scale_color_manual" <- "scale_linetype_manual" <- "xlab" <- "ylab" <- "geom_histogram" <- "aes" <- "geom_vline" <- "facet_grid" <- "theme" <- "element_text" <- "unit" <- "element_rect" <- "ggplot" <- "labs" <- "coord_cartesian" <- "gtable_filter" <- "ggplot_gtable" <- "ggplot_build" <- "arrangeGrob" <- "textGrob" <- "gpar" <- "..count.." <- "..PANEL.." <- "sd" <- "quantile" <- "scale_y_continuous" <- "percent" <- NULL
-  rm(list=c("type","..density..","oval","mval","devl","devu","sval","scale_color_manual","scale_linetype_manual","xlab","ylab","geom_histogram","aes","geom_vline","facet_grid","theme","element_text","unit","element_rect","ggplot","labs","coord_cartesian","gtable_filter","ggplot_gtable","ggplot_build","arrangeGrob","textGrob","gpar","..count..","..PANEL..","sd","quantile","scale_y_continuous","percent"))
+  "type" <- "..density.." <- "oval" <- "mval" <- "devl" <- "devu" <- "sval" <- "scale_color_manual" <- "scale_linetype_manual" <- "xlab" <- "ylab" <- "geom_histogram" <- "aes" <- "geom_vline" <- "facet_grid" <- "theme" <- "element_text" <- "unit" <- "element_rect" <- "ggplot" <- "labs" <- "coord_cartesian" <- "gtable_filter" <- "ggplot_gtable" <- "ggplot_build" <- "arrangeGrob" <- "textGrob" <- "gpar" <- "..count.." <- "..PANEL.." <- "sd" <- "quantile" <- "scale_y_continuous" <- "percent" <- "packageVersion" <- NULL
+  rm(list=c("type","..density..","oval","mval","devl","devu","sval","scale_color_manual","scale_linetype_manual","xlab","ylab","geom_histogram","aes","geom_vline","facet_grid","theme","element_text","unit","element_rect","ggplot","labs","coord_cartesian","gtable_filter","ggplot_gtable","ggplot_build","arrangeGrob","textGrob","gpar","..count..","..PANEL..","sd","quantile","scale_y_continuous","percent","packageVersion"))
   
   # Check the mandatory arguments
   if(is.null(obsdata) | is.null(simdata)){stop("None of the obsdata and simdata arguments can be empty.")}
@@ -84,7 +84,8 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
   isimlst    <- as.matrix(apply(subset(simdata, eval(parse(text=idNm))==id, select=calcparam), 2, FUN=function(x) as.numeric(as.character(x[x!="NaN" & !is.na(x) & x!=Inf & x!=-Inf]))))
   if(is.null(colnames(isimlst))) isimlst <- t(isimlst)
   
-  metric     <- ""                                                # NCA metric associated with the outlier
+  metric     <- ""    # NCA metric associated with the outlier
+  diagNm     <- ""    # List of outliers for each NCA diagnostic metric
   pdata      <- data.frame(oval=numeric(0),sval=numeric(0),mval=numeric(0),devl=numeric(0),devu=numeric(0),xl=numeric(0),xu=numeric(0),type=character(0))
   pde        <- data.frame(matrix(ncol=length(calcparam),nrow=1))   # store PDE values
   names(pde) <- calcparam
@@ -154,7 +155,7 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
       }
     }
     
-    if(noPlot=="FALSE"){
+    if(noPlot==FALSE){
       ggOpt_otl <- list(scale_color_manual(name="",values=c("Obs"="red","meanSim"="blue","+/-spread"="blue")),
                         scale_linetype_manual(name="",values=c("Obs"="solid","meanSim"="solid","+/-spread"="dashed")),
                         xlab(""), ylab(""),
@@ -178,9 +179,13 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
                               strip.text.x = element_text(size=8, face="bold")))
       devtag <- ifelse (spread=="ppi","95% parametric prediction interval","95% nonparametric prediction interval")
       gplt   <- list()
-      figttl <- ifelse(is.null(figlbl),
-                       paste("Outlier_ID-",id,"\n(spread = ",devtag,")\n\n",sep=""),
-                       paste("Outlier_ID-",id,"_",figlbl,"\n(spread = ",devtag,")\n\n",sep=""))
+      
+      if(is.null(figlbl)){
+        figttl <- paste0("Outlier_ID-",id,"\n(spread = ",devtag,")\n\n")
+      }else{
+        figttl <- paste0("Outlier_ID-",id,"_",figlbl,"\n(spread = ",devtag,")\n\n")
+      }
+      
       for (p in 1:npr){
         df <- subset(pdata, type==diagparam[p])
         df$type <- factor(df$type, levels=diagparam[p], labels=fctNm[fctNm$prmNm==diagparam[p],"prmUnit"])
@@ -192,11 +197,18 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
       mylegend <- suppressMessages(suppressWarnings(gtable_filter(ggplot_gtable(ggplot_build(gplt[[1]])), "guide-box", trim=T)))
       lheight  <- sum(mylegend$heights)
       for (p in 1:npr){gplt[[p]] <- gplt[[p]] + theme(legend.position="none")}
-      gdr <- suppressMessages(suppressWarnings(
-        do.call(arrangeGrob, c(gplt,
-                               list(main = textGrob(figttl,vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
-                                    sub = textGrob("Value\n\n",vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
-                                    ncol=nc)))))
+      
+      plot_args <- list(top = textGrob(figttl,vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
+                        bottom = textGrob("Value\n\n",vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
+                        ncol=nc)
+      if(packageVersion("gridExtra") < "0.9.2"){
+        arg_names <- names(plot_args)
+        arg_names <- sub("top","main",arg_names)
+        arg_names <- sub("bottom","sub",arg_names)
+        names(plot_args) <- arg_names
+      }
+      gdr <- suppressMessages(suppressWarnings(do.call(arrangeGrob,c(gplt,plot_args))))
+      #grid.arrange(gdr)
     }
   }
   return(list(obsdata=obsdata,pde=pde,metric=metric,grob=gdr,legend=mylegend,lheight=lheight))

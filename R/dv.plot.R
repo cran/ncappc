@@ -23,8 +23,8 @@
 #'
 
 dv.plot <- function(pdata,cunit="[M].[L]^-3",tunit="[T]"){
-  "ID" <- "Time" <- "Conc" <- "theme" <- "unit" <- "element_text" <- "xlab" <- "ylab" <- "geom_line" <- "aes" <- "geom_point" <- "ggplot" <- "facet_wrap" <- "scale_y_log10" <- "arrangeGrob" <- "textGrob" <- "gpar" <- NULL
-  rm(list=c("ID","Time","Conc","theme","unit","element_text","xlab","ylab","geom_line","aes","geom_point","ggplot","facet_wrap","scale_y_log10","arrangeGrob","textGrob","gpar"))
+  "ID" <- "Time" <- "Conc" <- "theme" <- "unit" <- "element_text" <- "xlab" <- "ylab" <- "geom_line" <- "aes" <- "geom_point" <- "ggplot" <- "facet_wrap" <- "scale_y_log10" <- "arrangeGrob" <- "textGrob" <- "gpar" <- "packageVersion" <- NULL
+  rm(list=c("ID","Time","Conc","theme","unit","element_text","xlab","ylab","geom_line","aes","geom_point","ggplot","facet_wrap","scale_y_log10","arrangeGrob","textGrob","gpar","packageVersion"))
   
   ggOpt_conc <- list(theme(plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm"),
                            panel.margin = unit(0.2, "cm"),
@@ -38,10 +38,20 @@ dv.plot <- function(pdata,cunit="[M].[L]^-3",tunit="[T]"){
   if ("FCT"%in%names(pdata)) p01 <- p01 + facet_wrap(~FCT, scales="free", ncol=1)
   
   p02 <- p01 + scale_y_log10()
-  gdr <- suppressMessages(suppressWarnings(
-    arrangeGrob(p01,p02,ncol=2,
-                main=textGrob("Concentration vs. Time profile\n",vjust=1,gp=gpar(fontface="bold",cex = 0.7)),
-                left=textGrob(paste("\nPlasma concentration (",cunit,")",sep=""),gp=gpar(fontface="bold",cex = 0.7),rot=90),
-                sub=textGrob(paste("Time (",tunit,")\n"),gp=gpar(fontface="bold",cex = 0.7)))))
+  
+  plot_args <- list(p01,p02,ncol=2,
+                    top=textGrob("Concentration vs. Time profile\n",vjust=1,gp=gpar(fontface="bold",cex = 0.7)),
+                    left=textGrob(paste("\nPlasma concentration (",cunit,")",sep=""),gp=gpar(fontface="bold",cex = 0.7),rot=90),
+                    bottom=textGrob(paste("Time (",tunit,")\n"),gp=gpar(fontface="bold",cex = 0.7)))
+  
+  if(packageVersion("gridExtra") < "0.9.2"){
+    arg_names <- names(plot_args)
+    arg_names <- sub("top","main",arg_names)
+    arg_names <- sub("bottom","sub",arg_names)
+    names(plot_args) <- arg_names
+  }  
+  
+  gdr <- suppressMessages(suppressWarnings(do.call(arrangeGrob,plot_args)))
+  #grid.arrange(gdr)
   return(gdr)
 }

@@ -4,59 +4,71 @@
 \alias{ncappc}
 \title{Performs NCA calculations and population PK model diagnosis.}
 \usage{
-ncappc(obsFile = NULL, simFile = NULL, grNm = NULL, grp = NULL,
-  flNm = NULL, flag = NULL, doseNm = NULL, dose = NULL,
+ncappc(obsFile = "nca_original.npctab.dta",
+  simFile = "nca_simulation.1.npctab.dta", str1Nm = NULL, str1 = NULL,
+  str2Nm = NULL, str2 = NULL, str3Nm = NULL, str3 = NULL,
   concUnit = NULL, timeUnit = NULL, doseUnit = NULL,
-  doseNormUnit = NULL, obsLog = "FALSE", simLog = "FALSE",
-  psnOut = "FALSE", idNmObs = "ID", timeNmObs = "TIME",
-  concNmObs = "DV", idNmSim = "ID", timeNmSim = "TIME",
-  concNmSim = "DV", AUCTimeRange = NULL, backExtrp = "FALSE",
-  LambdaTimeRange = NULL, LambdaExclude = NULL, doseAmtNm = NULL,
-  adminType = "extravascular", doseType = "ns", Tau = NULL, TI = NULL,
-  method = "mixed", blqNm = NULL, blqExcl = 1, evid = "FALSE",
-  evidIncl = 0, mdv = "FALSE", filterNm = NULL, filterExcl = NULL,
-  negConcExcl = "FALSE", param = c("AUClast", "Cmax"),
-  timeFormat = "number", dateColNm = NULL, dateFormat = NULL,
-  spread = "npi", tabCol = c("AUClast", "Cmax", "Tmax", "AUCINF_obs",
-  "Vz_obs", "Cl_obs", "HL_Lambda_z"), figFormat = "tiff", noPlot = "FALSE",
-  printOut = "TRUE", studyName = NULL)
+  doseNormUnit = NULL, obsLog = FALSE, simLog = FALSE, psnOut = TRUE,
+  idNmObs = "ID", timeNmObs = "TIME", concNmObs = "DV", idNmSim = "ID",
+  timeNmSim = "TIME", concNmSim = "DV", AUCTimeRange = NULL,
+  backExtrp = FALSE, LambdaTimeRange = NULL, LambdaExclude = NULL,
+  doseAmtNm = NULL, adminType = "extravascular", doseType = "ns",
+  doseTime = NULL, Tau = NULL, TI = NULL, method = "linear-log",
+  blqNm = NULL, blqExcl = 1, evid = TRUE, evidIncl = 0, mdv = FALSE,
+  filterNm = NULL, filterExcl = NULL, negConcExcl = FALSE,
+  param = c("AUClast", "Cmax"), timeFormat = "number", dateColNm = NULL,
+  dateFormat = NULL, spread = "npi", tabCol = c("AUClast", "Cmax", "Tmax",
+  "AUCINF_obs", "Vz_obs", "Cl_obs", "HL_Lambda_z"), figFormat = "tiff",
+  noPlot = FALSE, printOut = TRUE, studyName = NULL,
+  new_data_method = TRUE, overwrite_SIMDATA = NULL, outFileNm = NULL)
 }
 \arguments{
 \item{obsFile}{Observed concentration-time data from an internal data frame
-or an external table with comma, tab or space as separator}
+or an external table with comma, tab or space as separator
+(\strong{"nca_original.npctab.dta"})}
 
 \item{simFile}{NONMEM simulation output with the simulated concentration-time
-data from an internal data frame or an external table (\strong{"NULL"})}
+data from an internal data frame or an external table
+(\strong{"nca_simulation.1.npctab.dta"}). \code{NULL} produces just the
+traditional NCA output, a filename or data frame prduces the NCA output as
+well as the PopPK diagnosis. If \code{new_data_method=TRUE} then this can
+be a compressed file as well.}
 
-\item{grNm}{Column name for population stratifier (\strong{"NULL"})}
+\item{str1Nm}{Column name for 1st level population stratifier
+(\strong{\code{NULL}})}
 
-\item{grp}{Stratification ID (e.g c(1,2)) (\strong{"NULL"})}
+\item{str1}{Stratification ID of the members within 1st level stratification
+(e.g c(1,2)) (\strong{\code{NULL}})}
 
-\item{flNm}{Column name for popualtion stratifier (\strong{"NULL"})}
+\item{str2Nm}{Column name for 2nd level population stratifier
+(\strong{\code{NULL}})}
 
-\item{flag}{Stratification ID (e.g. c(1,2)) (\strong{"NULL"})}
+\item{str2}{Stratification ID of the members within 2nd level stratification
+(e.g c(1,2)) (\strong{\code{NULL}})}
 
-\item{doseNm}{Column name to specify dose identifiers (\strong{"NULL"})}
+\item{str3Nm}{Column name for 3rd level population stratifier
+(\strong{\code{NULL}})}
 
-\item{dose}{Dose identifiers to be used (c(1,2)) (\strong{"NULL"})}
+\item{str3}{Stratification ID of the members within 3rd level stratification
+(e.g c(1,2)) (\strong{\code{NULL}})}
 
-\item{concUnit}{Unit of concentration ("ng/mL") (\strong{"[M].[L]^-3"})}
+\item{concUnit}{Unit of concentration (e.g. "ng/mL") (\strong{"M.L^-3"})}
 
-\item{timeUnit}{Unit of time ("h") (\strong{"[T]})}
+\item{timeUnit}{Unit of time (e.g. "h") (\strong{"T"})}
 
-\item{doseUnit}{Unit of dose amount ("ng") (\strong{"[M]"})}
+\item{doseUnit}{Unit of dose amount (e.g. "ng") (\strong{"M"})}
 
-\item{doseNormUnit}{Normalization factor of dose amount if used (kg)
-(\strong{"NULL"})}
+\item{doseNormUnit}{Normalization factor of dose amount if used (e.g. "kg")
+(\strong{\code{NULL}})}
 
-\item{obsLog}{Concentration in observed data in logarithmic form (TRUE,
-FALSE) (\strong{"FALSE"})}
+\item{obsLog}{Concentration in observed data in logarithmic form
+(\code{TRUE}, \code{FALSE}) (\strong{\code{FALSE}})}
 
-\item{simLog}{Concentration in simulated data in logarithmic form (TRUE,
-FALSE) (\strong{"FALSE"})}
+\item{simLog}{Concentration in simulated data in logarithmic form
+(\code{TRUE}, \code{FALSE}) (\strong{\code{FALSE}})}
 
 \item{psnOut}{observed data is an output from PsN or in NONMEM output format
-(TRUE, FALSE) (\strong{"FALSE"})}
+(\code{TRUE}, \code{FALSE}) (\strong{\code{TRUE}})}
 
 \item{idNmObs}{Column name for ID in observed data (\strong{"ID"})}
 
@@ -73,18 +85,23 @@ FALSE) (\strong{"FALSE"})}
 (\strong{"DV"})}
 
 \item{AUCTimeRange}{User-defined window of time used to estimate AUC
-(\strong{"NULL"})}
+(\strong{\code{NULL}})}
 
-\item{backExtrp}{If back-extrapolation is needed for AUC (TRUE or FALSE)
-(\strong{"FALSE"})}
+\item{backExtrp}{If back-extrapolation is needed for AUC (\code{TRUE} or
+\code{FALSE}) (\strong{\code{FALSE}})}
 
 \item{LambdaTimeRange}{User-defined window of time to estimate elimination
-rate-constant (\strong{"NULL"})}
+rate-constant. This argument lets the user to choose a specific window of
+time to be used to estimate the elimination rate constant (Lambda) in the
+elimination phase. The accepted format for the input to this argument is a
+numeric array of two elements; \code{c(14,24)} will estimate the Lambda
+using the data within the time units 14 to 24.  If \code{NULL} then all
+times are considered.}
 
 \item{LambdaExclude}{User-defined excluded observation time points for
-estimation of elimination rate-constant (\strong{"NULL"})}
+estimation of elimination rate-constant (\strong{\code{NULL}})}
 
-\item{doseAmtNm}{Column name to specify dose amount (\strong{"NULL"})}
+\item{doseAmtNm}{Column name to specify dose amount (\strong{\code{NULL}})}
 
 \item{adminType}{Route of administration
 (iv-bolus,iv-infusion,extravascular) (\strong{"extravascular"})}
@@ -92,29 +109,32 @@ estimation of elimination rate-constant (\strong{"NULL"})}
 \item{doseType}{Steady-state (ss) or nonsteady-state (ns) dose
 (\strong{"ns"})}
 
-\item{Tau}{Dosing interval for steady-state data (\strong{"NULL"})}
+\item{doseTime}{Dose time prior to the first observation for steady-state data (\strong{\code{NULL}})}
 
-\item{TI}{Infusion duration (\strong{"NULL"})}
+\item{Tau}{Dosing interval for steady-state data (\strong{\code{NULL}})}
 
-\item{method}{linear, loglinear or mixed (\strong{"mixed"})}
+\item{TI}{Infusion duration (\strong{\code{NULL}})}
 
-\item{blqNm}{Name of BLQ column if used (\strong{"NULL"})}
+\item{method}{linear, log or linear-log (\strong{"linear-log"})}
+
+\item{blqNm}{Name of BLQ column if used (\strong{\code{NULL}})}
 
 \item{blqExcl}{Excluded BLQ value or logical condition (e.g. 1 or ">=1" or
 c(1,">3")) (\strong{"1"})}
 
-\item{evid}{Use EVID (TRUE, FALSE) (\strong{"FALSE"})}
+\item{evid}{Use EVID (\code{TRUE}, \code{FALSE}) (\strong{\code{TRUE}})}
 
 \item{evidIncl}{Included EVID (\strong{"0"})}
 
-\item{mdv}{Use MDV (TRUE(includes data for MDV==0), FALSE) (\strong{"FALSE"})}
+\item{mdv}{Use MDV (\code{TRUE}(includes data for MDV==0), \code{FALSE})
+(\strong{\code{FALSE}})}
 
-\item{filterNm}{Column name for filter (\strong{"NULL"})}
+\item{filterNm}{Column name for filter (\strong{\code{NULL}})}
 
 \item{filterExcl}{Filter identifier or logical condition used for row
-exclusion (e.g. c(1, 2, "<20", ">=100", "!=100")) (\strong{"NULL"})}
+exclusion (e.g. c(1, 2, "<20", ">=100", "!=100")) (\strong{\code{NULL}})}
 
-\item{negConcExcl}{Exclude -ve conc (\strong{"FALSE"})}
+\item{negConcExcl}{Exclude -ve conc (\strong{\code{FALSE}})}
 
 \item{param}{NCA parameters (AUClast, AUClower_upper, AUCINF_obs,
 AUCINF_pred, AUMClast, Cmax, Tmax, HL_Lambda_z) (c(\strong{"AUClast",
@@ -122,14 +142,15 @@ AUCINF_pred, AUMClast, Cmax, Tmax, HL_Lambda_z) (c(\strong{"AUClast",
 
 \item{timeFormat}{time format (number, H:M, H:M:S) (\strong{"number"})}
 
-\item{dateColNm}{colunm name for date if used (Date, DATE) (\strong{"NULL"})}
+\item{dateColNm}{colunm name for date if used (Date, DATE)
+(\strong{\code{NULL}})}
 
 \item{dateFormat}{date format (D-M-Y, D/M/Y or any other combination of
-D,M,Y) (\strong{"NULL"})}
+D,M,Y) (\strong{\code{NULL}})}
 
-\item{spread}{Measure of the spread of simulated data (ppi (95\% parametric
-prediction interval) or npi (95\% nonparametric prediction interval))
-(\strong{"npi"})}
+\item{spread}{Measure of the spread of simulated data (\code{"ppi"} (95\%
+parametric prediction interval) or \code{"npi"} (95\% nonparametric
+prediction interval))}
 
 \item{tabCol}{Output columns to be printed in the report in addition to ID,
 dose and population strata information (list of NCA metrics in a string
@@ -140,13 +161,26 @@ array) (\strong{c("AUClast", "Cmax", "Tmax", "AUCINF_obs", "Vz_obs",
 (\strong{"tiff"})}
 
 \item{noPlot}{Perform only NCA calculations without any plot generation
-(TRUE, FALSE) (\strong{"FALSE"})}
+(\code{TRUE} or \code{FALSE})}
 
 \item{printOut}{Write/print output on the disk. No plot will be saved if
-noPlot is set to TRUE (TRUE, FALSE) (\strong{"TRUE"})}
+noPlot is set to \code{TRUE} (\code{TRUE}, \code{FALSE})
+(\strong{\code{TRUE}})}
 
 \item{studyName}{Name of the study to be added as a description in the report
-  (\strong{"NULL"})}
+(\strong{\code{NULL}})}
+
+\item{new_data_method}{\code{TRUE} or \code{FALSE}. For testing a faster
+method of reading data. (\strong{\code{TRUE}})}
+
+\item{overwrite_SIMDATA}{Can be \code{TRUE}, to create new information in the
+SIMDATA directory, \code{FALSE}, to use the information in the SIMDATA
+directory or \code{NULL} to have a dialog come up to ask the user what to
+do. (\strong{\code{NULL}})}
+
+\item{outFileNm}{Additional tag to the name of the output html and pdf output
+  file hyphenated to the standard ncappc report file name standard ncappc
+  report file name (\strong{Name of the observed data file})}
 }
 \value{
 NCA results and diagnostic test results
@@ -184,6 +218,12 @@ misspecification. In addition, tabular outputs are generated showing the
 values of the NCA metrics estimated from the observed and the simulated data,
 along with the deviation, NPDE, regression parameters used to estimate the
 elimination rate constant and the related population statistics. The default
-values of the arguments used in \pkg{ncappc} are shown in \strong{bold}.
+values of the arguments used in \pkg{ncappc} are shown in the \strong{Useage}
+section of this document and/or in \strong{bold} in the \strong{Arguments}
+section.
+}
+\examples{
+ncappc(obsFile=system.file("extdata","pkdata.csv",package="ncappc"),
+psnOut=FALSE,noPlot=TRUE,printOut=FALSE)
 }
 

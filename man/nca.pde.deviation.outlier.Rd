@@ -9,7 +9,7 @@ Identifies outlier to population PK model.}
 nca.pde.deviation.outlier(obsdata, simdata, idNm = "ID", id = NULL,
   spread = "npi", figlbl = NULL, calcparam = c("AUClast", "Cmax"),
   diagparam = c("AUClast", "Cmax"), cunit = "[M].[L]^-3", tunit = "[T]",
-  noPlot = "FALSE")
+  noPlot = FALSE)
 }
 \arguments{
 \item{obsdata}{A data frame containing the NCA metrics values estimated from
@@ -44,7 +44,7 @@ and "HL_Lambda_z". (\strong{c("AUClast", "Cmax")})}
 \item{tunit}{Unit for time (\strong{"[T]"})}
 
 \item{noPlot}{Perform only NCA calculations without any plot generation
-  (TRUE, FALSE) (\strong{"FALSE"})}
+  (TRUE, FALSE) (\strong{FALSE})}
 }
 \value{
 returns the observed data frame with added distance and simulation

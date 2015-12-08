@@ -37,7 +37,9 @@
 #'  \item \strong{No_points_Lambda_z} is the number of observed data points 
 #'  used to determine the best fitting regression line in the elimination 
 #'  phase.
-#'  \item \strong{AUC_pBack_Ext} is the percentage of AUClast that is 
+#'  \item \strong{AUC_pBack_Ext_obs} is the percentage of AUCINF_obs that is 
+#'  contributed by the back extrapolation to estimate C0.
+#'  \item \strong{AUC_pBack_Ext_pred} is the percentage of AUCINF_pred that is 
 #'  contributed by the back extrapolation to estimate C0.
 #'  \item \strong{AUClower_upper} is the AUC under the concentration-time 
 #'  profile within the user-specified window of time privided as the 
@@ -112,19 +114,14 @@
 #' @param time Numeric array for time
 #' @param conc Numeric array for concentration
 #' @param backExtrp If back-extrapolation is needed for AUC (TRUE or FALSE)
-#'   (\strong{"FALSE"})
-#' @param negConcExcl Exclude -ve conc (\strong{"FALSE"})
+#'   (\strong{FALSE})
+#' @param negConcExcl Exclude -ve conc (\strong{FALSE})
 #' @param doseType Steady-state (ss) or nonsteady-state (ns) dose
 #'   (\strong{"ns"})
 #' @param adminType Route of administration
 #'   (iv-bolus,iv-infusion,extravascular) (\strong{"extravascular"})
-#' @param doseNm Column name to specify dose identifiers (\strong{"NULL"})
-#' @param dose Dose identifiers used in the entire data (c(1,2))
-#'   (\strong{"NULL"})
-#' @param doseNumber Dose identifier used in this estimation (1)
-#'   (\strong{"NULL"})
 #' @param doseAmt Dose amounts (\strong{"NULL"})
-#' @param method linear, loglinear or mixed (\strong{"linear"})
+#' @param method linear, log or linear-log (\strong{"linear-log"})
 #' @param AUCTimeRange User-defined window of time used to estimate AUC 
 #'   (\strong{"NULL"})
 #' @param LambdaTimeRange User-defined window of time to estimate elimination 
@@ -132,6 +129,7 @@
 #' @param LambdaExclude User-defined excluded observation time points for
 #'   estimation of elimination rate-constant (\strong{"NULL"})
 #' @param Tau Dosing interval for steady-state data (\strong{"NULL"})
+#' @param doseTime Dose time prior to the first observation for steady-state data (\strong{\code{NULL}})
 #' @param TI Infusion duration (\strong{"NULL"})
 #' @param simFile Name of the simulated concentration-time data if present
 #'   (\strong{"NULL"})
@@ -145,14 +143,17 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # function to estimate NCA parameters
-est.nca <- function(time,conc,backExtrp="FALSE",negConcExcl="FALSE",doseType="ns",adminType="extravascular",doseNm=NULL,dose=NULL,doseNumber=NULL,doseAmt=NULL,method="linear",AUCTimeRange=NULL,LambdaTimeRange=NULL,LambdaExclude=NULL,Tau=NULL,TI=NULL,simFile=NULL,dset="obs"){
-  
+
+est.nca <- function(time,conc,backExtrp=FALSE,negConcExcl=FALSE,doseType="ns",adminType="extravascular",
+                    doseAmt=NULL,method="linear-log",AUCTimeRange=NULL,LambdaTimeRange=NULL,LambdaExclude=NULL,
+                    doseTime=doseTime,Tau=NULL,TI=NULL,simFile=NULL,dset="obs"){
+
   "tail" <- "head" <- "lm" <- "coef" <- NULL
   rm(list=c("tail","head","lm","coef"))
   
   ## set all NCA metrics, except Tau to "NaN"
   #C0 <- "NaN"; Tmax <- "NaN"; Cmax <- "NaN"; Cmax_D <- "NaN"; Tlast <- "NaN"; Clast <- "NaN"; AUClast <- "NaN"; AUMClast <- "NaN"; MRTlast <- "NaN"; No_points_Lambda_z <- "NaN"
-  #AUC_pBack_Ext <- "NaN"; AUClower_upper <- "NaN"; Rsq <- "NaN"; Rsq_adjusted <- "NaN"; Corr_XY <- "NaN"; Lambda_z <- "NaN"; Lambda_z_lower <- "NaN"; Lambda_z_upper <- "NaN"; HL_Lambda_z <- "NaN"
+  #AUC_pBack_Ext_obs <- AUC_pBack_Ext_pred <- "NaN"; AUClower_upper <- "NaN"; Rsq <- "NaN"; Rsq_adjusted <- "NaN"; Corr_XY <- "NaN"; Lambda_z <- "NaN"; Lambda_z_lower <- "NaN"; Lambda_z_upper <- "NaN"; HL_Lambda_z <- "NaN"
   #AUCINF_obs <- "NaN"; AUCINF_D_obs <- "NaN"; AUC_pExtrap_obs <- "NaN"; Vz_obs <- "NaN"; Cl_obs <- "NaN"; AUCINF_pred <- "NaN"; AUCINF_D_pred <- "NaN"; AUC_pExtrap_pred <- "NaN"; Vz_pred <- "NaN"; Cl_pred <- "NaN"
   #AUMCINF_obs <- "NaN"; AUMC_pExtrap_obs <- "NaN"; AUMCINF_pred <- "NaN"; AUMC_pExtrap_pred <- "NaN"; MRTINF_obs <- "NaN"; MRTINF_pred <- "NaN"; Tmin <- "NaN"; Cmin <- "NaN"; Cavg <- "NaN"
   #AUCtau <- "NaN"; AUMCtau <- "NaN"; Clss <- "NaN"; Vss_obs <- "NaN"; Vss_pred <- "NaN"; p_Fluctuation <- "NaN"; Accumulation_Index <- "NaN"
@@ -163,107 +164,158 @@ est.nca <- function(time,conc,backExtrp="FALSE",negConcExcl="FALSE",doseType="ns
   nconc <- as.numeric(conc)
   
   # Exclude zero or negative concentration from calculations
-  if (negConcExcl == "TRUE"){
+  if (negConcExcl == TRUE){
     zid <- which (nconc < 0)
     if (length(zid) > 0){ntime  <- ntime[-zid]; nconc  <- nconc[-zid]}
   }
   
   if (length(nconc) >= 2){
+    # Steady state data
+    if (doseType == "ss"){
+      if(is.null(doseTime)){
+        # Index for the first observation with non-zero conc
+        ssIdx1 <- min(which(nconc>0))
+        # Steady state 1st observation time and conc
+        sc1 <- nconc[ssIdx1]; st1 <- ntime[ssIdx1]
+        # Steady state last observation time and conc
+        ssIdx2 <- which.min(abs(ntime-(st1+Tau)))  # Index for the last ss time (Tau added to first time and find the nearest time to that number)
+        ssIdx2 <- max(which(abs(round(ntime,0)-lTm)==0))  # Find the index in time vector that matches
+        sc2 <- nconc[ssIdx2]; st2 <- ntime[ssIdx2]
+      }else{
+        # Index for the first observation within the steady state interval
+        ssIdx1 <- min(which(abs(round(ntime,0)-doseTime)==0))
+        # Steady state 1st observation time and conc
+        sc1 <- nconc[ssIdx1]; st1 <- ntime[ssIdx1]
+        # Steady state last observation time and conc
+        lTm <- round(ntime[ssIdx1],0)+Tau  # Tau added to first time
+        ssIdx2 <- max(which(abs(round(ntime,0)-lTm)==0))  # Find the index in time vector that matches
+        sc2 <- nconc[ssIdx2]; st2 <- ntime[ssIdx2]
+      }
+      # steady state observations
+      nconc <- nconc[which(ntime>=st1 & ntime<=st2)]
+      ntime <- ntime[which(ntime>=st1 & ntime<=st2)]
+      otime <- ntime - min(ntime)       # Time if off-set to zero for estimation of the 1st moment
+      ssnPt <- length(ntime)
+      
+      #sconc <- nconc[which(ntime>=0 & ntime<=Tau)]; stime <- ntime[which(ntime>=0 & ntime<=Tau)]; ssnPt <- length(stime)
+      if (ssnPt != 0){
+        mIdx <- which(nconc == min(nconc[nconc!=0]))[1]; Tmin <- ntime[mIdx]; Cmin <- nconc[mIdx]
+        AUCtau <- AUMCtau <- 0.
+      }
+    }
+    
     # Calculation of C0
-    if (backExtrp == "TRUE"){
-      ndose <- ifelse(!is.null(dose), length(dose), 0)
-      if (ndose == 1 | (!is.null(doseNm) & doseNumber == dose[1])){
-        if (ntime[1] == 0){
-          C0 <- as.numeric(nconc[1])
-        }else{
-          if (adminType == "extravascular" | adminType == "iv-infusion"){
-            C0 <- 0
-            nconc <- c(C0, nconc)
-            if (doseType == "ss"){
-              if (ssnPt != 0){C0 <- as.numeric(min(nconc)); nconc <- c(C0, nconc)}
-            }
-          }else if (adminType == "iv-bolus"){
-            slope <- (nconc[2]-nconc[1])/(ntime[2]-ntime[1])
-            if (nconc[1]==0 | nconc[2]==0){
-              C0 <- as.numeric(nconc[nconc>0][1]); nconc <- c(C0, nconc)
-            }else if (slope >= 0){
-              C0 <- as.numeric(nconc[1]); nconc <- c(C0, nconc)
-            }else{
-              C0 <- as.numeric(exp((ntime[1]*log(nconc[2])-ntime[2]*log(nconc[1]))/(ntime[1]-ntime[2])))
-              nconc <- c(C0, nconc) # extrapolation via log-linear regression
-            }
+    noBackTime <- TRUE
+    if (backExtrp == TRUE){
+      if (ntime[1] == 0){
+        C0 <- as.numeric(nconc[1])
+      }else{
+        if (adminType == "extravascular" | adminType == "iv-infusion"){
+          C0 <- 0
+          nconc <- c(C0, nconc)
+          if (doseType == "ss" && ssnPt != 0) if (ssnPt != 0){C0 <- as.numeric(min(nconc))}
+        }else if (adminType == "iv-bolus"){
+          slope <- (nconc[2]-nconc[1])/(ntime[2]-ntime[1])
+          if (nconc[1]==0 | nconc[2]==0){
+            C0 <- as.numeric(nconc[nconc>0][1])
+          }else if (slope >= 0){
+            C0 <- as.numeric(nconc[1])
+          }else{
+            C0 <- as.numeric(exp((ntime[1]*log(nconc[2])-ntime[2]*log(nconc[1]))/(ntime[1]-ntime[2])))
+            nconc <- c(C0, nconc) # extrapolation via log-linear regression
+            ntime <- c(0, ntime)
+            noBackTime <- FALSE
           }
-          ntime <- c(0, ntime)
         }
       }
     }
     
     # AUClast & AUMClast and parameters for steady state data
+    otime   <- ntime - min(ntime)   # Time if off-set to zero for estimation of the 1st moment
     AUClast <- AUMClast <- AUCnoC0 <- AUClower_upper <- 0.
     
-    if (doseType == "ss"){
-      sconc <- nconc[which(ntime>=0 & ntime<=Tau)]; stime <- ntime[which(ntime>=0 & ntime<=Tau)]; ssnPt <- length(stime)
-      if (ssnPt != 0){
-        mIdx <- which(sconc == min(sconc[sconc!=0]))[1]; Tmin <- stime[mIdx]; Cmin <- sconc[mIdx]
-        AUCtau <- AUMCtau <- 0.
-      }
-    }
-    
     nPt    <- length(nconc)   # No. of data points
-    mxId   <- which(nconc == max(nconc))[1]
+    Cmax   <- max(nconc)
+    mxId   <- which(nconc == Cmax)[length(which(nconc == Cmax))]
     Tmax   <- ntime[mxId]
-    Cmax   <- nconc[mxId]
-    Cmax_D <- nconc[mxId]/doseAmt
+    Cmax_D <- ifelse(!is.null(doseAmt), nconc[mxId]/doseAmt, NA)
     lIdx   <- max(which(nconc == tail(nconc[nconc>0],1))) # Index for last positive concentration
     Tlast  <- ntime[lIdx]; Clast <- nconc[lIdx]
     
     for(r in 1:(nPt-1)){
       if (method == "linear"){
         delauc   <- mean(nconc[r:(r+1)])*(ntime[r+1]-ntime[r])
-        delaumc  <- 0.5*((nconc[r+1]*ntime[r+1])+(nconc[r]*ntime[r]))*(ntime[r+1]-ntime[r])
+        delaumc  <- 0.5*((nconc[r+1]*otime[r+1])+(nconc[r]*otime[r]))*(otime[r+1]-otime[r])
         AUClast  <- sum(AUClast, delauc)
         AUMClast <- sum(AUMClast, delaumc)
-        if (r>1 & backExtrp == "TRUE"){AUCnoC0 <- sum(AUCnoC0, delauc)}
-        if (!is.null(AUCTimeRange)){if (ntime[r] >= sort(AUCTimeRange)[1] & ntime[r+1] <= sort(AUCTimeRange)[2]){AUClower_upper <- sum(AUClower_upper, delauc)}}
-        if (doseType == "ss" && (ntime[r] >= 0 & ntime[r+1] <= Tau & ssnPt != 0)){
-          AUCtau <- sum(AUCtau, delauc); AUMCtau <- sum(AUMCtau, delaumc)
+        if (backExtrp == TRUE){
+          if (noBackTime == TRUE){
+            AUCnoC0 <- sum(AUCnoC0, delauc)
+          }else if (noBackTime == FALSE & r>1){
+            AUCnoC0 <- sum(AUCnoC0, delauc)
+          }
         }
-      }else if (method == "loglinear"){
+        if (!is.null(AUCTimeRange)){if (ntime[r] >= min(AUCTimeRange) & ntime[r+1] <= max(AUCTimeRange)){AUClower_upper <- sum(AUClower_upper, delauc)}}
+        if (doseType == "ss" && ssnPt != 0){
+          AUCtau  <- sum(AUCtau, delauc); AUMCtau <- sum(AUMCtau, delaumc)
+        }
+      }else if (method == "log"){
         delauc   <- (nconc[r+1]-nconc[r])*(ntime[r+1]-ntime[r])/log(nconc[r+1]/nconc[r])
-        delaumc  <- ((((nconc[r+1]*ntime[r+1])-(nconc[r]*ntime[r]))*(ntime[r+1]-ntime[r]))/(log(nconc[r+1]/nconc[r]))) - ((nconc[r+1]-nconc[r])*((ntime[r+1]-ntime[r])**2)/((log(nconc[r+1]/nconc[r]))**2))
+        delaumc  <- ((((nconc[r+1]*otime[r+1])-(nconc[r]*otime[r]))*(otime[r+1]-otime[r]))/(log(nconc[r+1]/nconc[r]))) - ((nconc[r+1]-nconc[r])*((otime[r+1]-otime[r])**2)/((log(nconc[r+1]/nconc[r]))**2))
         AUClast  <- sum(AUClast, delauc)
         AUMClast <- sum(AUMClast, delaumc)
-        if (r>1 & backExtrp == "TRUE"){AUCnoC0  <- sum(AUCnoC0, delauc)}
-        if (!is.null(AUCTimeRange)){if (ntime[r] >= sort(AUCTimeRange)[1] & ntime[r+1] <= sort(AUCTimeRange)[2]){AUClower_upper <- sum(AUClower_upper, delauc)}}
-        if (doseType == "ss" && (ntime[r] >= 0 & ntime[r+1] <= Tau & ssnPt != 0)){
+        if (backExtrp == TRUE){
+          if (noBackTime == TRUE){
+            AUCnoC0 <- sum(AUCnoC0, delauc)
+          }else if (noBackTime == FALSE & r>1){
+            AUCnoC0 <- sum(AUCnoC0, delauc)
+          }
+        }
+        if (!is.null(AUCTimeRange)){if (ntime[r] >= min(AUCTimeRange) & ntime[r+1] <= max(AUCTimeRange)){AUClower_upper <- sum(AUClower_upper, delauc)}}
+        if (doseType == "ss" && ssnPt != 0){
           AUCtau <- sum(AUCtau, delauc); AUMCtau <- sum(AUMCtau, delaumc)
         }
-      }else if (method == "mixed"){
+      }else if (method == "linear-log"){
         if (nconc[r+1]>=nconc[r] | nconc[r+1]<=0 | nconc[r]<=0){
           delauc   <- mean(nconc[r:(r+1)])*(ntime[r+1]-ntime[r])
-          delaumc  <- 0.5*((nconc[r+1]*ntime[r+1])+(nconc[r]*ntime[r]))*(ntime[r+1]-ntime[r])
+          delaumc  <- 0.5*((nconc[r+1]*otime[r+1])+(nconc[r]*otime[r]))*(otime[r+1]-otime[r])
           AUClast  <- sum(AUClast, delauc)
           AUMClast <- sum(AUMClast, delaumc)
-          if (r>1 & backExtrp == "TRUE"){AUCnoC0  <- sum(AUCnoC0, delauc)}
-          if (!is.null(AUCTimeRange)){if (ntime[r] >= sort(AUCTimeRange)[1] & ntime[r+1] <= sort(AUCTimeRange)[2]){AUClower_upper <- sum(AUClower_upper, delauc)}}
-          if (doseType == "ss"){
-            if (ntime[r] >= 0 & ntime[r+1] <= Tau & ssnPt != 0){AUCtau <- sum(AUCtau, delauc); AUMCtau <- sum(AUMCtau, delaumc)}
+          if (backExtrp == TRUE){
+            if (noBackTime == TRUE){
+              AUCnoC0 <- sum(AUCnoC0, delauc)
+            }else if (noBackTime == FALSE & r>1){
+              AUCnoC0 <- sum(AUCnoC0, delauc)
+            }
+          }
+          if (!is.null(AUCTimeRange)){if (ntime[r] >= min(AUCTimeRange) & ntime[r+1] <= max(AUCTimeRange)){AUClower_upper <- sum(AUClower_upper, delauc)}}
+          if (doseType == "ss" && ssnPt != 0){
+            AUCtau <- sum(AUCtau, delauc); AUMCtau <- sum(AUMCtau, delaumc)
           }
         }else{
           delauc   <- (nconc[r+1]-nconc[r])*(ntime[r+1]-ntime[r])/log(nconc[r+1]/nconc[r])
-          delaumc  <- ((((nconc[r+1]*ntime[r+1])-(nconc[r]*ntime[r]))*(ntime[r+1]-ntime[r]))/(log(nconc[r+1]/nconc[r]))) - ((nconc[r+1]-nconc[r])*((ntime[r+1]-ntime[r])**2)/((log(nconc[r+1]/nconc[r]))**2))
+          delaumc  <- ((((nconc[r+1]*otime[r+1])-(nconc[r]*otime[r]))*(otime[r+1]-otime[r]))/(log(nconc[r+1]/nconc[r]))) - ((nconc[r+1]-nconc[r])*((otime[r+1]-otime[r])**2)/((log(nconc[r+1]/nconc[r]))**2))
           AUClast  <- sum(AUClast, delauc)
           AUMClast <- sum(AUMClast, delaumc)
-          if (r>1 & backExtrp == "TRUE"){AUCnoC0  <- sum(AUCnoC0, delauc)}
-          if (!is.null(AUCTimeRange)){if (ntime[r] >= sort(AUCTimeRange)[1] & ntime[r+1] <= sort(AUCTimeRange)[2]){AUClower_upper <- sum(AUClower_upper, delauc)}}
-          if (doseType == "ss" && (ntime[r] >= 0 & ntime[r+1] <= Tau & ssnPt != 0)){
+          if (backExtrp == TRUE){
+            if (noBackTime == TRUE){
+              AUCnoC0 <- sum(AUCnoC0, delauc)
+            }else if (noBackTime == FALSE & r>1){
+              AUCnoC0 <- sum(AUCnoC0, delauc)
+            }
+          }
+          if (!is.null(AUCTimeRange)){if (ntime[r] >= min(AUCTimeRange) & ntime[r+1] <= max(AUCTimeRange)){AUClower_upper <- sum(AUClower_upper, delauc)}}
+          if (doseType == "ss" && ssnPt != 0){
             AUCtau <- sum(AUCtau, delauc); AUMCtau <- sum(AUMCtau, delaumc)
           }
         }
       }
     }
     if (is.null(AUCTimeRange)){AUClower_upper <- AUClast}
-    if (backExtrp == "TRUE"){AUC_pBack_Ext <- 100*(AUClast-AUCnoC0)/AUClast} #else{AUC_pBack_Ext <- "NaN"}
+    if (backExtrp == TRUE){
+      AUC_pBack_Ext_obs <- 100*(AUClast-AUCnoC0)/AUClast
+      AUC_pBack_Ext_pred <- AUC_pBack_Ext_obs
+    }
     
     # MRTlast
     if (adminType != "iv-infusion"){
@@ -276,7 +328,11 @@ est.nca <- function(time,conc,backExtrp="FALSE",negConcExcl="FALSE",doseType="ns
     # Determine the lower and upper indeces of the time vector used for Lambda calculation
     AUCINF_obs <- AUCINF_pred <- AUMCINF_obs <- AUMCINF_pred <- 0.
     
-    llower <- tail(which(nconc == max(nconc)), 1); lupper <- nPt
+    llower <- tail(which(nconc == max(nconc)),1); lupper <- nPt
+    
+    # Exclude Cmax from elimination phase extrapolation for non-bolus dose
+    if(adminType!="iv-bolus") llower <- llower+1
+    
     if (!is.null(LambdaTimeRange)){
       Lambda_z_lower <- sort(LambdaTimeRange)[1]; Lambda_z_upper <- sort(LambdaTimeRange)[2]
       if (length(ntime[ntime >= Lambda_z_lower]) != 0 & length(ntime[ntime <= Lambda_z_upper]) != 0){
@@ -300,7 +356,7 @@ est.nca <- function(time,conc,backExtrp="FALSE",negConcExcl="FALSE",doseType="ns
         if (coef(mlr)[2] >= 0) next
         n    <- (lnPt-r)+1
         rsq  <- summary(mlr)$r.squared
-        trsq <- 1-((1-rsq^2)*(n-1)/(n-2))  # adjusted r^2
+        trsq <- 1-((1-rsq)*(n-1)/(n-2))  # adjusted r^2
         tmp  <- cbind(np=n,rsq=rsq,arsq=trsq,m=(coef(mlr)[2]),inpt=(coef(mlr)[1]))
         infd <- rbind(infd,tmp)
       }
@@ -315,35 +371,66 @@ est.nca <- function(time,conc,backExtrp="FALSE",negConcExcl="FALSE",doseType="ns
             Rsq <- infd$rsq[r]; Rsq_adjusted <- tarsq; No_points_Lambda_z <- tDPt; slope <- infd$m[r]; intercept <- infd$inpt[r]
           }
         }
-        Corr_XY      <- sqrt(Rsq)
+        Corr_XY      <- -1*sqrt(Rsq)
         Lambda_z     <- (-1*slope)
         HL_Lambda_z  <- log(2)/Lambda_z
         AUCINF_obs   <- exp(lconc[lnPt])/Lambda_z
         AUMCINF_obs  <- (exp(lconc[lnPt])/(Lambda_z**2))+(ltime[lnPt]*exp(lconc[lnPt])/Lambda_z)
         lastPt       <- exp((slope*ltime[lnPt])+intercept)
         AUCINF_pred  <- lastPt/Lambda_z
-        AUMCINF_pred <- (lastPt/(Lambda_z**2))+(ltime[lnPt]*lastPt/Lambda_z)        
+        AUMCINF_pred <- (lastPt/(Lambda_z**2))+(ltime[lnPt]*lastPt/Lambda_z)  
+        
+        if(!is.null(AUCTimeRange) && (max(AUCTimeRange)>max(ltime))){
+          uptime  <- max(AUCTimeRange)
+          lowtime <- ifelse(min(AUCTimeRange) < max(ltime), max(ltime), min(AUCTimeRange))
+          upconc  <- ifelse(exp(slope*uptime+intercept)==0, 0.0001, exp(slope*uptime+intercept))
+          lowconc <- ifelse(lowtime==max(ltime), exp(lconc[lnPt]), exp(slope*lowtime+intercept))
+          delauc  <- (upconc-lowconc)*(uptime-lowtime)/log(upconc/lowconc)
+          AUClower_upper <- AUClower_upper + delauc
+        }
+        
+        if (doseType == "ss" && (Tau > max(ltime) & AUCtau != 0)){
+          uptime  <- Tau
+          lowtime <- max(ltime)
+          upconc  <- ifelse(exp(slope*uptime+intercept)==0, 0.0001, exp(slope*uptime+intercept))
+          lowconc <- exp(lconc[lnPt])
+          delauc  <- (upconc-lowconc)*(uptime-lowtime)/log(upconc/lowconc)
+          delaumc <- ((((upconc*lowconc)-(lowconc*lowtime))*(uptime-lowtime))/(log(upconc/lowconc))) - ((upconc-lowconc)*((uptime-lowtime)**2)/((log(upconc/lowconc))**2))
+          AUCtau  <- sum(AUCtau, delauc)
+          AUMCtau <- sum(AUMCtau, delaumc)
+        }
       }
       
       if (AUClast != 0 & AUCINF_obs != 0){
-        AUCINF_obs  <- AUClast+AUCINF_obs;  AUCINF_D_obs  <- AUCINF_obs/doseAmt;  AUC_pExtrap_obs  <- 100*(AUCINF_obs-AUClast)/AUCINF_obs
-        AUCINF_pred <- AUClast+AUCINF_pred; AUCINF_D_pred <- AUCINF_pred/doseAmt; AUC_pExtrap_pred <- 100*(AUCINF_pred-AUClast)/AUCINF_pred
-        Vz_obs  <- doseAmt/(Lambda_z*AUCINF_obs);  Cl_obs  <- doseAmt/AUCINF_obs
-        Vz_pred <- doseAmt/(Lambda_z*AUCINF_pred); Cl_pred <- doseAmt/AUCINF_pred
+        AUCINF_obs  <- AUClast+AUCINF_obs;  AUCINF_D_obs  <- ifelse(!is.null(doseAmt),AUCINF_obs/doseAmt,NA);  AUC_pExtrap_obs  <- 100*(AUCINF_obs-AUClast)/AUCINF_obs
+        AUCINF_pred <- AUClast+AUCINF_pred; AUCINF_D_pred <- ifelse(!is.null(doseAmt),AUCINF_pred/doseAmt,NA); AUC_pExtrap_pred <- 100*(AUCINF_pred-AUClast)/AUCINF_pred
+        if(doseType=="ns"){
+          Vz_obs  <- ifelse(!is.null(doseAmt),doseAmt/(Lambda_z*AUCINF_obs),NA);  Cl_obs  <- ifelse(!is.null(doseAmt),doseAmt/AUCINF_obs,NA)
+          Vz_pred <- ifelse(!is.null(doseAmt),doseAmt/(Lambda_z*AUCINF_pred),NA); Cl_pred <- ifelse(!is.null(doseAmt),doseAmt/AUCINF_pred,NA)
+        }else{
+          Vz_obs  <- ifelse(!is.null(doseAmt),doseAmt/(Lambda_z*AUCtau),NA);  Cl_obs  <- ifelse(!is.null(doseAmt),doseAmt/AUCtau,NA)
+          Vz_pred <- NA; Cl_pred <- NA
+        }
+        
       }
       
       if(AUMClast != 0 & AUMCINF_obs != 0){
-        AUMCINF_obs  <- AUMClast+AUMCINF_obs;  AUMCINF_D_obs  <- AUMCINF_obs/doseAmt;  AUMC_pExtrap_obs  <- 100*(AUMCINF_obs-AUMClast)/AUMCINF_obs
-        AUMCINF_pred <- AUMClast+AUMCINF_pred; AUMCINF_D_pred <- AUMCINF_pred/doseAmt; AUMC_pExtrap_pred <- 100*(AUMCINF_pred-AUMClast)/AUMCINF_pred
+        AUMCINF_obs  <- AUMClast+AUMCINF_obs;  AUMCINF_D_obs  <- ifelse(!is.null(doseAmt),AUMCINF_obs/doseAmt,NA);  AUMC_pExtrap_obs  <- 100*(AUMCINF_obs-AUMClast)/AUMCINF_obs
+        AUMCINF_pred <- AUMClast+AUMCINF_pred; AUMCINF_D_pred <- ifelse(!is.null(doseAmt),AUMCINF_pred/doseAmt,NA); AUMC_pExtrap_pred <- 100*(AUMCINF_pred-AUMClast)/AUMCINF_pred
       }
       
       if (AUCINF_obs  != 0 & AUMCINF_obs  != 0){MRTINF_obs  <- ifelse(adminType != "iv-infusion", AUMCINF_obs/AUCINF_obs,   ((AUMCINF_obs/AUCINF_obs)-(TI/2)))} #else{MRTINF_obs  <- "NaN"}
       if (AUCINF_pred != 0 & AUMCINF_pred != 0){MRTINF_pred <- ifelse(adminType != "iv-infusion", AUMCINF_pred/AUCINF_pred, ((AUMCINF_pred/AUCINF_pred)-(TI/2)))} #else{MRTINF_pred <- "NaN"}
       
+      if(doseType == "ns" && (adminType == "iv-bolus"|adminType == "iv-infusion")){
+        Vss_obs  <- MRTINF_obs*Cl_obs
+        Vss_pred <- MRTINF_pred*Cl_pred
+      }
+      
       if (doseType == "ss" && ssnPt != 0){
         Cavg <- AUCtau/Tau
-        Clss <- doseAmt/AUCtau
-        Cmax <- max(sconc)
+        Clss <- ifelse(!is.null(doseAmt),doseAmt/AUCtau,NA)
+        Cmax <- max(nconc)
         p_Fluctuation <- 100*(Cmax-Cmin)/Cavg
         if (Lambda_z != "NaN"){Accumulation_Index <- 1/(1-exp(-Lambda_z*Tau))}
         
@@ -371,7 +458,8 @@ est.nca <- function(time,conc,backExtrp="FALSE",negConcExcl="FALSE",doseType="ns
   if(!exists("AUMClast")) AUMClast <- NA
   if(!exists("MRTlast")) MRTlast <- NA
   if(!exists("No_points_Lambda_z")) No_points_Lambda_z <- NA
-  if(!exists("AUC_pBack_Ext")) AUC_pBack_Ext <- NA
+  if(!exists("AUC_pBack_Ext_obs")) AUC_pBack_Ext_obs <- NA
+  if(!exists("AUC_pBack_Ext_pred")) AUC_pBack_Ext_pred <- NA
   if(!exists("AUClower_upper")) AUClower_upper <- NA
   if(!exists("Rsq")) Rsq <- NA
   if(!exists("Rsq_adjusted")) Rsq_adjusted <- NA
@@ -408,13 +496,13 @@ est.nca <- function(time,conc,backExtrp="FALSE",negConcExcl="FALSE",doseType="ns
   if(!exists("Accumulation_Index")) Accumulation_Index <- NA
   
   if (!is.null(simFile) & dset == "obs"){
-    NCAprm <- as.numeric(c(C0,Tmax,0,0,0,Cmax,0,0,0,Cmax_D,Tlast,Clast,AUClast,0,0,0,AUMClast,0,0,0,MRTlast,No_points_Lambda_z,AUC_pBack_Ext,AUClower_upper,0,0,0,Rsq,Rsq_adjusted,Corr_XY,Lambda_z,Lambda_z_lower,Lambda_z_upper,HL_Lambda_z,0,0,0,AUCINF_obs,0,0,0,AUCINF_D_obs,AUC_pExtrap_obs,Vz_obs,Cl_obs,AUCINF_pred,0,0,0,AUCINF_D_pred,AUC_pExtrap_pred,Vz_pred,Cl_pred,AUMCINF_obs,AUMC_pExtrap_obs,AUMCINF_pred,AUMC_pExtrap_pred,MRTINF_obs,MRTINF_pred,Tau,Tmin,Cmin,Cavg,AUCtau,AUMCtau,Clss,Vss_obs,Vss_pred,p_Fluctuation,Accumulation_Index))
+    NCAprm <- as.numeric(c(C0,Tmax,0,0,0,Cmax,0,0,0,Cmax_D,Tlast,Clast,AUClast,0,0,0,AUMClast,0,0,0,MRTlast,No_points_Lambda_z,AUClower_upper,0,0,0,Rsq,Rsq_adjusted,Corr_XY,Lambda_z,Lambda_z_lower,Lambda_z_upper,HL_Lambda_z,0,0,0,AUCINF_obs,0,0,0,AUCINF_D_obs,AUC_pExtrap_obs,AUC_pBack_Ext_obs,Vz_obs,Cl_obs,AUCINF_pred,0,0,0,AUCINF_D_pred,AUC_pExtrap_pred,AUC_pBack_Ext_pred,Vz_pred,Cl_pred,AUMCINF_obs,AUMC_pExtrap_obs,AUMCINF_pred,AUMC_pExtrap_pred,MRTINF_obs,MRTINF_pred,Tau,Tmin,Cmin,Cavg,AUCtau,AUMCtau,Clss,Vss_obs,Vss_pred,p_Fluctuation,Accumulation_Index))
     
-    names(NCAprm) <- c("C0","Tmax","simTmax","dTmax","npdeTmax","Cmax","simCmax","dCmax","npdeCmax","Cmax_D","Tlast","Clast","AUClast","simAUClast","dAUClast","npdeAUClast","AUMClast","simAUMClast","dAUMClast","npdeAUMClast","MRTlast","No_points_Lambda_z","AUC_pBack_Ext","AUClower_upper","simAUClower_upper","dAUClower_upper","npdeAUClower_upper","Rsq","Rsq_adjusted","Corr_XY","Lambda_z","Lambda_z_lower","Lambda_z_upper","HL_Lambda_z","simHL_Lambda_z","dHL_Lambda_z","npdeHL_Lambda_z","AUCINF_obs","simAUCINF_obs","dAUCINF_obs","npdeAUCINF_obs","AUCINF_D_obs","AUC_pExtrap_obs","Vz_obs","Cl_obs","AUCINF_pred","simAUCINF_pred","dAUCINF_pred","npdeAUCINF_pred","AUCINF_D_pred","AUC_pExtrap_pred","Vz_pred","Cl_pred","AUMCINF_obs","AUMC_pExtrap_obs","AUMCINF_pred","AUMC_pExtrap_pred","MRTINF_obs","MRTINF_pred","Tau","Tmin","Cmin","Cavg","AUCtau","AUMCtau","Clss","Vss_obs","Vss_pred","p_Fluctuation","Accumulation_Index")
+    names(NCAprm) <- c("C0","Tmax","simTmax","dTmax","npdeTmax","Cmax","simCmax","dCmax","npdeCmax","Cmax_D","Tlast","Clast","AUClast","simAUClast","dAUClast","npdeAUClast","AUMClast","simAUMClast","dAUMClast","npdeAUMClast","MRTlast","No_points_Lambda_z","AUClower_upper","simAUClower_upper","dAUClower_upper","npdeAUClower_upper","Rsq","Rsq_adjusted","Corr_XY","Lambda_z","Lambda_z_lower","Lambda_z_upper","HL_Lambda_z","simHL_Lambda_z","dHL_Lambda_z","npdeHL_Lambda_z","AUCINF_obs","simAUCINF_obs","dAUCINF_obs","npdeAUCINF_obs","AUCINF_D_obs","AUC_pExtrap_obs","AUC_pBack_Ext_obs","Vz_obs","Cl_obs","AUCINF_pred","simAUCINF_pred","dAUCINF_pred","npdeAUCINF_pred","AUCINF_D_pred","AUC_pExtrap_pred","AUC_pBack_Ext_pred","Vz_pred","Cl_pred","AUMCINF_obs","AUMC_pExtrap_obs","AUMCINF_pred","AUMC_pExtrap_pred","MRTINF_obs","MRTINF_pred","Tau","Tmin","Cmin","Cavg","AUCtau","AUMCtau","Clss","Vss_obs","Vss_pred","p_Fluctuation","Accumulation_Index")
   }else{
-    NCAprm <- as.numeric(c(C0,Tmax,Cmax,Cmax_D,Tlast,Clast,AUClast,AUMClast,MRTlast,No_points_Lambda_z,AUC_pBack_Ext,AUClower_upper,Rsq,Rsq_adjusted,Corr_XY,Lambda_z,Lambda_z_lower,Lambda_z_upper,HL_Lambda_z,AUCINF_obs,AUCINF_D_obs,AUC_pExtrap_obs,Vz_obs,Cl_obs,AUCINF_pred,AUCINF_D_pred,AUC_pExtrap_pred,Vz_pred,Cl_pred,AUMCINF_obs,AUMC_pExtrap_obs,AUMCINF_pred,AUMC_pExtrap_pred,MRTINF_obs,MRTINF_pred,Tau,Tmin,Cmin,Cavg,AUCtau,AUMCtau,Clss,Vss_obs,Vss_pred,p_Fluctuation,Accumulation_Index))
+    NCAprm <- as.numeric(c(C0,Tmax,Cmax,Cmax_D,Tlast,Clast,AUClast,AUMClast,MRTlast,No_points_Lambda_z,AUClower_upper,Rsq,Rsq_adjusted,Corr_XY,Lambda_z,Lambda_z_lower,Lambda_z_upper,HL_Lambda_z,AUCINF_obs,AUCINF_D_obs,AUC_pExtrap_obs,AUC_pBack_Ext_obs,Vz_obs,Cl_obs,AUCINF_pred,AUCINF_D_pred,AUC_pExtrap_pred,AUC_pBack_Ext_pred,Vz_pred,Cl_pred,AUMCINF_obs,AUMC_pExtrap_obs,AUMCINF_pred,AUMC_pExtrap_pred,MRTINF_obs,MRTINF_pred,Tau,Tmin,Cmin,Cavg,AUCtau,AUMCtau,Clss,Vss_obs,Vss_pred,p_Fluctuation,Accumulation_Index))
     
-    names(NCAprm) <- c("C0","Tmax","Cmax","Cmax_D","Tlast","Clast","AUClast","AUMClast","MRTlast","No_points_Lambda_z","AUC_pBack_Ext","AUClower_upper","Rsq","Rsq_adjusted","Corr_XY","Lambda_z","Lambda_z_lower","Lambda_z_upper","HL_Lambda_z","AUCINF_obs","AUCINF_D_obs","AUC_pExtrap_obs","Vz_obs","Cl_obs","AUCINF_pred","AUCINF_D_pred","AUC_pExtrap_pred","Vz_pred","Cl_pred","AUMCINF_obs","AUMC_pExtrap_obs","AUMCINF_pred","AUMC_pExtrap_pred","MRTINF_obs","MRTINF_pred","Tau","Tmin","Cmin","Cavg","AUCtau","AUMCtau","Clss","Vss_obs","Vss_pred","p_Fluctuation","Accumulation_Index")
+    names(NCAprm) <- c("C0","Tmax","Cmax","Cmax_D","Tlast","Clast","AUClast","AUMClast","MRTlast","No_points_Lambda_z","AUClower_upper","Rsq","Rsq_adjusted","Corr_XY","Lambda_z","Lambda_z_lower","Lambda_z_upper","HL_Lambda_z","AUCINF_obs","AUCINF_D_obs","AUC_pExtrap_obs","AUC_pBack_Ext_obs","Vz_obs","Cl_obs","AUCINF_pred","AUCINF_D_pred","AUC_pExtrap_pred","AUC_pBack_Ext_pred","Vz_pred","Cl_pred","AUMCINF_obs","AUMC_pExtrap_obs","AUMCINF_pred","AUMC_pExtrap_pred","MRTINF_obs","MRTINF_pred","Tau","Tmin","Cmin","Cavg","AUCtau","AUMCtau","Clss","Vss_obs","Vss_pred","p_Fluctuation","Accumulation_Index")
   }
   return(NCAprm)
 }
