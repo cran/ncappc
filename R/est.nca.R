@@ -188,7 +188,8 @@ est.nca <- function(time,conc,backExtrp=FALSE,negConcExcl=FALSE,doseType="ns",ad
         sc1 <- nconc[ssIdx1]; st1 <- ntime[ssIdx1]
         # Steady state last observation time and conc
         lTm <- round(ntime[ssIdx1],0)+Tau  # Tau added to first time
-        ssIdx2 <- max(which(abs(round(ntime,0)-lTm)==0))  # Find the index in time vector that matches
+        ssIdx2 <- which(ntime==(st1+Tau-min(abs(round(ntime,0)-lTm))[1]))  # Find the index in time vector closest to first obs time + Tau
+        #ssIdx2 <- max(which(abs(round(ntime,0)-lTm)==0))  # Find the index in time vector that matches
         sc2 <- nconc[ssIdx2]; st2 <- ntime[ssIdx2]
       }
       # steady state observations
@@ -378,7 +379,7 @@ est.nca <- function(time,conc,backExtrp=FALSE,negConcExcl=FALSE,doseType="ns",ad
         AUMCINF_obs  <- (exp(lconc[lnPt])/(Lambda_z**2))+(ltime[lnPt]*exp(lconc[lnPt])/Lambda_z)
         lastPt       <- exp((slope*ltime[lnPt])+intercept)
         AUCINF_pred  <- lastPt/Lambda_z
-        AUMCINF_pred <- (lastPt/(Lambda_z**2))+(ltime[lnPt]*lastPt/Lambda_z)  
+        AUMCINF_pred <- (lastPt/(Lambda_z**2))+(ltime[lnPt]*lastPt/Lambda_z)
         
         if(!is.null(AUCTimeRange) && (max(AUCTimeRange)>max(ltime))){
           uptime  <- max(AUCTimeRange)
@@ -395,7 +396,7 @@ est.nca <- function(time,conc,backExtrp=FALSE,negConcExcl=FALSE,doseType="ns",ad
           upconc  <- ifelse(exp(slope*uptime+intercept)==0, 0.0001, exp(slope*uptime+intercept))
           lowconc <- exp(lconc[lnPt])
           delauc  <- (upconc-lowconc)*(uptime-lowtime)/log(upconc/lowconc)
-          delaumc <- ((((upconc*lowconc)-(lowconc*lowtime))*(uptime-lowtime))/(log(upconc/lowconc))) - ((upconc-lowconc)*((uptime-lowtime)**2)/((log(upconc/lowconc))**2))
+          delaumc <- ((((upconc*uptime)-(lowconc*lowtime))*(uptime-lowtime))/(log(upconc/lowconc))) - ((upconc-lowconc)*((uptime-lowtime)**2)/((log(upconc/lowconc))**2))
           AUCtau  <- sum(AUCtau, delauc)
           AUMCtau <- sum(AUMCtau, delaumc)
         }
@@ -435,7 +436,7 @@ est.nca <- function(time,conc,backExtrp=FALSE,negConcExcl=FALSE,doseType="ns",ad
         if (Lambda_z != "NaN"){Accumulation_Index <- 1/(1-exp(-Lambda_z*Tau))}
         
         # re-define MRTINF for steady state and calculate Vss
-        if (AUCINF_obs  != "NaN" & AUMCINF_obs  != "NaN" & AUCtau != 0){
+        if (AUCINF_obs  != "NaN" & AUMCINF_obs  !=  "NaN" & AUCtau != 0){
           if (adminType == "iv-infusion"){
             MRTINF_obs <- ((AUMCtau+Tau*(AUCINF_obs-AUCtau))/(AUCtau)-(TI/2)); MRTINF_pred <- ((AUMCtau+Tau*(AUCINF_pred-AUCtau))/(AUCtau)-(TI/2))
           }else{
