@@ -36,13 +36,15 @@
 #'   "AUClast", "AUClower_upper", "AUCINF_obs", "AUCINF_pred", "AUMClast", 
 #'   "Cmax", "Tmax" and "HL_Lambda_z". (\strong{c("AUClast", "Cmax")})
 #' @param diagparam A character array of the NCA metrics used for diagnostic 
-#'   test. The allowed NCA metrics for this histograms are "AUClast", 
-#'   "AUClower_upper", "AUCINF_obs", "AUCINF_pred", "AUMClast", "Cmax", "Tmax" 
-#'   and "HL_Lambda_z". (\strong{c("AUClast", "Cmax")})
-#' @param cunit Unit for concentration (\strong{"[M].[L]^-3"})
-#' @param tunit Unit for time (\strong{"[T]"})
+#'   test to detect outliers. The allowed NCA metrics for this histograms are
+#'   "AUClast", "AUClower_upper", "AUCINF_obs", "AUCINF_pred", "AUMClast",
+#'   "Cmax", "Tmax" and "HL_Lambda_z". (\strong{c("AUClast", "Cmax")})
+#' @param cunit Unit for concentration (default is \strong{\code{NULL}})
+#' @param tunit Unit for time (default is \strong{\code{NULL}})
 #' @param noPlot Perform only NCA calculations without any plot generation
 #'   (TRUE, FALSE) (\strong{FALSE})
+#' @param onlyNCA If \code{TRUE} only NCA is performed and ppc part is ignored
+#'   although simFile is not \code{NULL}. Default is \strong{\code{FALSE}}
 #'
 #' @return returns the observed data frame with added distance and simulation
 #'   mean of the nCA metrics, and a data frame with the PDE values of the NCA
@@ -52,10 +54,21 @@
 #' @export
 #'
 
-nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="npi",figlbl=NULL,calcparam=c("AUClast","Cmax"),diagparam=c("AUClast","Cmax"),cunit="[M].[L]^-3",tunit="[T]",noPlot=FALSE){
+nca.pde.deviation.outlier <- function(obsdata,
+                                      simdata,
+                                      idNm="ID",
+                                      id=NULL,
+                                      spread="npi",
+                                      figlbl=NULL,
+                                      calcparam=c("AUClast","Cmax"),
+                                      diagparam=c("AUClast","Cmax"),
+                                      cunit=NULL,
+                                      tunit=NULL,
+                                      noPlot=FALSE,
+                                      onlyNCA=onlyNCA){
   
-  "type" <- "..density.." <- "oval" <- "mval" <- "devl" <- "devu" <- "sval" <- "scale_color_manual" <- "scale_linetype_manual" <- "xlab" <- "ylab" <- "geom_histogram" <- "aes" <- "geom_vline" <- "facet_grid" <- "theme" <- "element_text" <- "unit" <- "element_rect" <- "ggplot" <- "labs" <- "coord_cartesian" <- "gtable_filter" <- "ggplot_gtable" <- "ggplot_build" <- "arrangeGrob" <- "textGrob" <- "gpar" <- "..count.." <- "..PANEL.." <- "sd" <- "quantile" <- "scale_y_continuous" <- "percent" <- "packageVersion" <- NULL
-  rm(list=c("type","..density..","oval","mval","devl","devu","sval","scale_color_manual","scale_linetype_manual","xlab","ylab","geom_histogram","aes","geom_vline","facet_grid","theme","element_text","unit","element_rect","ggplot","labs","coord_cartesian","gtable_filter","ggplot_gtable","ggplot_build","arrangeGrob","textGrob","gpar","..count..","..PANEL..","sd","quantile","scale_y_continuous","percent","packageVersion"))
+  "type" <- "..density.." <- "oval" <- "mval" <- "mdval" <- "devl" <- "devu" <- "sval" <- "scale_color_manual" <- "scale_linetype_manual" <- "xlab" <- "ylab" <- "geom_histogram" <- "aes" <- "geom_vline" <- "facet_grid" <- "theme" <- "element_text" <- "unit" <- "element_rect" <- "ggplot" <- "labs" <- "coord_cartesian" <- "gtable_filter" <- "ggplot_gtable" <- "ggplot_build" <- "arrangeGrob" <- "textGrob" <- "gpar" <- "..count.." <- "..PANEL.." <- "sd" <- "quantile" <- "scale_y_continuous" <- "percent" <- "packageVersion" <- NULL
+  rm(list=c("type","..density..","oval","mval","mdval","devl","devu","sval","scale_color_manual","scale_linetype_manual","xlab","ylab","geom_histogram","aes","geom_vline","facet_grid","theme","element_text","unit","element_rect","ggplot","labs","coord_cartesian","gtable_filter","ggplot_gtable","ggplot_build","arrangeGrob","textGrob","gpar","..count..","..PANEL..","sd","quantile","scale_y_continuous","percent","packageVersion"))
   
   # Check the mandatory arguments
   if(is.null(obsdata) | is.null(simdata)){stop("None of the obsdata and simdata arguments can be empty.")}
@@ -68,6 +81,7 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
   if (!all(diagparam%in%names(simdata))){stop("simdata data frame must contain columns with NCA mterics given in diagparam argument.")}
   
   if (!(idNm%in%names(obsdata)) | !(idNm%in%names(simdata))){stop("Column name for ID is not present in observed and/or simulated data.")}
+  
   if (is.null(id)){
     obsuid <- unique(obsdata[,idNm])
     simuid <- unique(simdata[,idNm])
@@ -77,52 +91,55 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
       id <- ifelse(length(obsuid)==1, obsuid, simuid)
     }
   }else{
-    if (length(id)!=1 | (!is.element(id, obsdata[,idNm])) | (!is.element(id, simdata[,idNm]))){stop("Either more than one values are provided to id argument, or provided id value is not present in observed and/or simulated data.")}
+    if (length(id)!=1 | (!is.element(id, obsdata[,idNm])) | (!is.element(id, simdata[,idNm]))){
+      stop("Either more than one value is provided to id argument, or provided id value is not present in observed and/or simulated data.")
+    }
   }
   
-  iobslst    <- as.list(apply(subset(obsdata, eval(parse(text=idNm))==id, select=calcparam), 2, FUN=function(x) as.numeric(as.character(x[x!="NaN" & !is.na(x) & x!=Inf & x!=-Inf]))))
-  isimlst    <- as.matrix(apply(subset(simdata, eval(parse(text=idNm))==id, select=calcparam), 2, FUN=function(x) as.numeric(as.character(x[x!="NaN" & !is.na(x) & x!=Inf & x!=-Inf]))))
+  iobslst <- as.list(apply(subset(obsdata, eval(parse(text=idNm))==id, select=calcparam), 
+                           2, FUN=function(x){x<-as.numeric(as.character(x)); x[complete.cases(x) & abs(x)!=Inf]}))
+  isimlst <- as.matrix(apply(subset(simdata, eval(parse(text=idNm))==id, select=calcparam), 
+                             2, FUN=function(x){x<-as.numeric(as.character(x)); x[complete.cases(x) & abs(x)!=Inf]}))
   if(is.null(colnames(isimlst))) isimlst <- t(isimlst)
   
   metric     <- ""    # NCA metric associated with the outlier
   diagNm     <- ""    # List of outliers for each NCA diagnostic metric
-  pdata      <- data.frame(oval=numeric(0),sval=numeric(0),mval=numeric(0),devl=numeric(0),devu=numeric(0),xl=numeric(0),xu=numeric(0),type=character(0))
+  pdata      <- data.frame(oval=numeric(0),sval=numeric(0),mdval=numeric(0),mval=numeric(0),devl=numeric(0),devu=numeric(0),xl=numeric(0),xu=numeric(0),type=character(0))
   pde        <- data.frame(matrix(ncol=length(calcparam),nrow=1))   # store PDE values
   names(pde) <- calcparam
   if (length(iobslst)==0 | length(isimlst)==0){
-    pde[,calcparam]                         <- "NaN"
-    obsdata[,paste("d",calcparam,sep="")]   <- "NaN"
-    obsdata[,paste("sim",calcparam,sep="")] <- "NaN"
+    pde[,calcparam] <- NaN
+    if(!onlyNCA) obsdata[,paste("d",calcparam,sep="")] <- NaN
+    obsdata[,paste("sim",calcparam,sep="")] <- NaN
   }else{
     for (i in 1:length(iobslst)){
       pnm <- colnames(isimlst)[i]
       if (length(iobslst[[pnm]])==0 | length(unlist(isimlst[,pnm]))==0){
-        pde[,pnm]                         <- "NaN"
-        obsdata[,paste("d",pnm,sep="")]   <- "NaN"
-        obsdata[,paste("sim",pnm,sep="")] <- "NaN"
+        pde[,pnm] <- NaN
+        if(!onlyNCA) obsdata[,paste("d",pnm,sep="")] <- NaN
+        obsdata[,paste("sim",pnm,sep="")] <- NaN
       }else{
         obsval    <- iobslst[[pnm]]
         simval    <- unlist(isimlst[,pnm])
+        mdsimval  <- median(simval)
         msimval   <- mean(simval)
         sdsimval  <- sd(simval)
         sdsimmean <- sdsimval*(simval-msimval)
         sdobsmean <- sdsimval*(obsval-msimval)
         if (spread == "ppi"){
-          distprm <- ifelse(sdsimval==0, (obsval-msimval), (obsval-msimval)/(2*sdsimval))
+          distprm <- ifelse(sdsimval==0, (obsval-mdsimval), (obsval-mdsimval)/(2*sdsimval))
           lldist  <- msimval-1.96*sdsimval
           uldist  <- msimval+1.96*sdsimval
         }else if (spread == "npi"){
-          distprm <- ifelse((obsval-msimval)>0, (obsval-msimval)/(unname(quantile(simval, 0.975))-msimval), (obsval-msimval)/(msimval-unname(quantile(simval, 0.025))))
+          distprm <- ifelse((obsval-mdsimval)>0, (obsval-mdsimval)/(unname(quantile(simval, 0.975))-mdsimval), (obsval-mdsimval)/(mdsimval-unname(quantile(simval, 0.025))))
           lldist  <- unname(quantile(simval, 0.025))
           uldist  <- unname(quantile(simval, 0.975))
         }
-        pde[,pnm]                         <- ifelse (obsval<min(simval), 1/length(simval), ifelse (obsval>max(simval), 1-(1/length(simval)), sum(sdsimmean<sdobsmean)/length(simval)))
-        obsdata[,paste("d",pnm,sep="")]   <- distprm
-        obsdata[,paste("sim",pnm,sep="")] <- msimval
-        pdata  <- rbind(pdata, data.frame(oval=obsval, sval=simval, mval=msimval, devl=lldist, devu=uldist, xl=min(lldist,obsval), xu=max(uldist,obsval), type=pnm, stringsAsFactors = F))
-        if ((!is.na(distprm) & !is.nan(distprm)) && (pnm%in%diagparam) & (abs(distprm)>1)){
-          metric <- paste(metric,paste("ID-",id,"_",pnm,sep=""),sep=", ")
-        }
+        pde[,pnm] <- ifelse (obsval<min(simval), 1/length(simval), ifelse (obsval>max(simval), 1-(1/length(simval)), sum(sdsimmean<sdobsmean)/length(simval)))
+        if(!onlyNCA) obsdata[,paste("d",pnm,sep="")] <- distprm
+        obsdata[,paste("sim",pnm,sep="")] <- mdsimval
+        pdata  <- rbind(pdata, data.frame(oval=obsval, sval=simval, mdval=mdsimval, mval=msimval, devl=lldist, devu=uldist, xl=min(lldist,obsval), xu=max(uldist,obsval), type=pnm, stringsAsFactors = F))
+        if((!is.na(distprm) & !is.nan(distprm)) && (pnm%in%diagparam) & (abs(distprm)>1)) metric <- paste(metric,paste("ID-",id,"_",pnm,sep=""),sep=", ")
       }
     }
   }
@@ -134,7 +151,7 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
   lheight  <- NULL
   
   # ggplot options for outliers
-  if (metric != ""){
+  if(metric != "" & !onlyNCA){
     pdata     <- subset(pdata, type%in%diagparam)
     diagparam <- unique(pdata$type)
     npr       <- length(diagparam)
@@ -143,40 +160,51 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
     nc        <- ifelse(npr<2, 1, ifelse(npr>=2 & npr<=6, 2, 3))
     for (p in 1:npr){
       if (diagparam[p] == "AUClast" | diagparam[p] == "AUClower_upper" | diagparam[p] == "AUCINF_obs" | diagparam[p] == "AUCINF_pred"){
-        fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste(diagparam[p]," (",cunit,"*",tunit,")",sep="")))
+        if(is.null(cunit) | is.null(tunit)){
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=diagparam[p]))
+        }else{
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste0(diagparam[p]," (",cunit,"*",tunit,")")))
+        }
       }else if (diagparam[p] == "AUMClast"){
-        fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste(diagparam[p]," (",cunit,"*",tunit,"^2)",sep="")))
+        if(is.null(cunit) | is.null(tunit)){
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=diagparam[p]))
+        }else{
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste0(diagparam[p]," (",cunit,"*",tunit,"^2)")))
+        }
       }else if (diagparam[p] == "Cmax"){
-        fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste(diagparam[p]," (",cunit,")",sep="")))
-      }else if (diagparam[p] == "Tmax"){
-        fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste(diagparam[p]," (",tunit,")",sep="")))
-      }else if (diagparam[p] == "HL_Lambda_z"){
-        fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste(diagparam[p]," (",tunit,")",sep="")))
+        if(is.null(cunit)){
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=diagparam[p]))
+        }else{
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste0(diagparam[p]," (",cunit,")")))
+        }
+      }else if (diagparam[p] == "Tmax" | diagparam[p] == "HL_Lambda_z"){
+        if(is.null(tunit)){
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=diagparam[p]))
+        }else{
+          fctNm <- rbind(fctNm, data.frame(prmNm=diagparam[p],prmUnit=paste0(diagparam[p]," (",tunit,")")))
+        }
       }
     }
     
-    if(noPlot==FALSE){
-      ggOpt_otl <- list(scale_color_manual(name="",values=c("Obs"="red","meanSim"="blue","+/-spread"="blue")),
-                        scale_linetype_manual(name="",values=c("Obs"="solid","meanSim"="solid","+/-spread"="dashed")),
+    if(!noPlot){
+      ggOpt_otl <- list(scale_color_manual(name="",values=c("Obs"="red","medianSim"="blue","+/-spread"="blue")),
+                        scale_linetype_manual(name="",values=c("Obs"="solid","medianSim"="solid","+/-spread"="dashed")),
                         xlab(""), ylab(""),
-                        geom_histogram(aes(y=(..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]), size=0.6, color="black", fill="white"),
                         scale_y_continuous(labels = percent),
-                        geom_vline(aes(xintercept=oval, color="Obs", linetype="Obs"), show_guide=T, size=1),
-                        geom_vline(aes(xintercept=mval, color="meanSim", linetype="meanSim"), show_guide=T, size=1),
-                        geom_vline(aes(xintercept=devl, color="+/-spread", linetype="+/-spread"), show_guide=T, size=1),
-                        geom_vline(aes(xintercept=devu, color="+/-spread", linetype="+/-spread"), show_guide=T, size=1),
-                        facet_grid(~type, scales="free"),
-                        theme(plot.title = element_text(size=9, face="bold"),
-                              axis.title.x = element_text(size=9,face="bold"),
-                              axis.title.y = element_text(size=9,face="bold"),
-                              axis.text.x  = element_text(size=9,face="bold",color="black",angle=45,vjust=1,hjust=1),
-                              axis.text.y  = element_text(size=9,face="bold",color="black",hjust=0),
-                              panel.margin = unit(0.5, "cm"), plot.margin  = unit(c(0.2,0.2,0.2,0.2), "cm"),
+                        geom_vline(aes(xintercept=oval, color="Obs", linetype="Obs"), show.legend=T, size=1),
+                        geom_vline(aes(xintercept=mdval, color="medianSim", linetype="medianSim"), show.legend=T, size=1),
+                        geom_vline(aes(xintercept=devl, color="+/-spread", linetype="+/-spread"), show.legend=T, size=1),
+                        geom_vline(aes(xintercept=devu, color="+/-spread", linetype="+/-spread"), show.legend=T, size=1),
+                        facet_grid(~FCT, scales="free"),
+                        theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1,size=10),
+                              axis.text.y = element_text(hjust=0,size=10),
+                              strip.text.x = element_text(size=10),
+                              legend.text = element_text(size=12),
+                              title = element_text(size=14,face="bold"),
                               legend.position = "bottom", legend.direction = "horizontal",
-                              legend.text  = element_text(size=8,face="bold"),
                               legend.background = element_rect(),
-                              legend.key.size = unit(0.8, "cm"),
-                              strip.text.x = element_text(size=8, face="bold")))
+                              legend.key.height = unit(1,"cm")))
+      
       devtag <- ifelse (spread=="ppi","95% parametric prediction interval","95% nonparametric prediction interval")
       gplt   <- list()
       
@@ -187,19 +215,22 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
       }
       
       for (p in 1:npr){
-        df <- subset(pdata, type==diagparam[p])
+        df      <- subset(pdata, type==diagparam[p])
         df$type <- factor(df$type, levels=diagparam[p], labels=fctNm[fctNm$prmNm==diagparam[p],"prmUnit"])
-        xl <- df$xl[1]; xu <- df$xu[1]
-        gplt[[p]] <- ggplot(df,aes(x=as.numeric(sval))) + ggOpt_otl +
-          labs(title=paste("Obs=",format(df$oval[1],digits=2),", meanSim=",format(df$mval[1],digits=2),"\n+/-spread=(",format(df$devl[1],digits=2),",",format(df$devu[1],digits=2),")\n",sep="")) +
-          coord_cartesian(xlim=c(xl,xu))
+        df$FCT  <- paste0(df$type,"\nObs=",out.digits(df$oval[1],dig=4),", medianSim=",out.digits(df$mdval[1],dig=4),"\n+/-spread=(",out.digits(df$devl[1],dig=4),",",out.digits(df$devu[1],dig=4),")")
+        xl      <- df$xl[1]
+        xu      <- df$xu[1]
+        bw      <- diff(unname(quantile(as.numeric(df$sval),c(0.005,0.985))))/(2*IQR(as.numeric(df$sval)))/length(as.numeric(df$sval))^(1/3)
+        gplt[[p]] <- ggplot(df,aes(x=as.numeric(sval))) +
+          geom_histogram(aes(y=(..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]), size=0.6, color="black", fill="white", binwidth = bw) +
+          ggOpt_otl + coord_cartesian(xlim=c(xl,xu))
       }
       mylegend <- suppressMessages(suppressWarnings(gtable_filter(ggplot_gtable(ggplot_build(gplt[[1]])), "guide-box", trim=T)))
       lheight  <- sum(mylegend$heights)
       for (p in 1:npr){gplt[[p]] <- gplt[[p]] + theme(legend.position="none")}
       
-      plot_args <- list(top = textGrob(figttl,vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
-                        bottom = textGrob("Value\n\n",vjust=1,gp=gpar(fontface="bold",cex = 0.8)),
+      plot_args <- list(top = textGrob(figttl,vjust=1,gp=gpar(cex=0.8,fontface="bold")),
+                        bottom = textGrob("Value\n",vjust=1,gp=gpar(cex=1,fontface="bold")),
                         ncol=nc)
       if(packageVersion("gridExtra") < "0.9.2"){
         arg_names <- names(plot_args)
@@ -208,7 +239,6 @@ nca.pde.deviation.outlier <- function(obsdata,simdata,idNm="ID",id=NULL,spread="
         names(plot_args) <- arg_names
       }
       gdr <- suppressMessages(suppressWarnings(do.call(arrangeGrob,c(gplt,plot_args))))
-      #grid.arrange(gdr)
     }
   }
   return(list(obsdata=obsdata,pde=pde,metric=metric,grob=gdr,legend=mylegend,lheight=lheight))

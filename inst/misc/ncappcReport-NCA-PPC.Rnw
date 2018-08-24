@@ -1,6 +1,21 @@
 \documentclass[pdflatex, a4paper, 11pt]{article}
+<<MAINknitr, message=FALSE, comment=NA, warning=FALSE, echo=FALSE, results='hide', cache=FALSE>>=
+### Load and set up knitr
+library(knitr)
+library(Cairo)
+opts_knit$set(self.contained=FALSE)
+opts_chunk$set(message=FALSE,comment=NA,warning=FALSE,echo=FALSE,results='hide', 
+               cache=TRUE,fig.align='center',size='normalsize',dev=c('cairo_pdf','png'),tidy=FALSE,concordance=FALSE)
+@
+
+
+%%%%% Modified
+\usepackage[a4paper,pdftex,hmargin=2.5cm,vmargin=3.5cm]{geometry}			% A4paper margins
+\setlength{\oddsidemargin}{0mm}				    % Adjusting margins to center the colorbox, ...
+\setlength{\evensidemargin}{0mm}					% ... you might want to change these
+\usepackage[english]{babel}
+\usepackage{fix-cm}
 \usepackage{booktabs, longtable, adjustbox, array, enumerate, mathtools, fancyhdr, graphicx, fancybox, amsmath, lscape, caption}
-\usepackage[hmargin=2.5cm,vmargin=3.5cm]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[table]{xcolor}
 \usepackage[T1]{fontenc}
@@ -8,6 +23,33 @@
 \usepackage{needspace}
 \usepackage{listings}
 \usepackage{inconsolata}
+\usepackage[para,flushleft]{threeparttablex}
+\usepackage{float}
+\usepackage{etoolbox}
+
+\newcommand{\HRule}[1]{\hfill \rule{0.2\linewidth}{#1}} 	% Horizontal rule
+\definecolor{grey}{rgb}{0.9,0.9,0.9}
+\definecolor{aliceblue}{rgb}{0.94, 0.97, 1.0}
+\definecolor{ballblue}{rgb}{0.13, 0.67, 0.8}
+\makeatletter							% Title
+\def\printtitle{%						
+    {\centering \@title\par}}
+\makeatother									
+\makeatletter							% Author
+\def\printauthor{%					
+    {\centering \large \@author}}				
+\makeatother
+
+\title{
+  \fontsize{20}{20}\selectfont
+	\vspace*{0.7cm}
+	\textbf{Report of \textit{ncappc}\textsuperscript{*} package}
+}
+
+\author{
+  \textsuperscript{*} Acharya, C., Hooker, A. C., Turkyilmaz, G. Y., Jonsson, S., Karlsson, M. O.; A diagnostic tool for population models using non-compartmental analysis: The ncappc package for R, \textit{Computer Methods and Programs in Biomedicine}, 2016, Vol. 127, 83-93
+}
+
 
 %%% Hyperref and cref settings
 \usepackage[bookmarksnumbered]{hyperref} % hyperlinks
@@ -18,41 +60,55 @@
             linktoc=page}
 
 \captionsetup{labelformat=empty}
-\pagestyle{fancy}
-\fancyhf{}
+
+%%% Header and footer
+\makeatletter
+%\patchcmd{\@fancyhead}{\rlap}{\color{ballblue}\rlap}{}{}
 \fancyhead[L]{\textbf{Report}}
 \fancyhead[R]{\textit{ncappc}}
 \fancyfoot[C]{\thepage}
+\patchcmd{\headrule}{\hrule}{\color{grey}\hrule}{}{}
+%\patchcmd{\@fancyfoot}{\rlap}{\color{ballblue}\rlap}{}{}
+\patchcmd{\footrule}{\hrule}{\color{grey}\hrule}{}{}
+\makeatother
+\pagestyle{fancy}
+
+% \pagestyle{fancy}
+% \fancyhf{}
+% \fancyhead[L]{\textbf{Report}}
+% \fancyhead[R]{\textit{ncappc}}
+% \fancyfoot[C]{\thepage}
+
+% Eqn, Fig and Tab
 \numberwithin{equation}{section}
 \numberwithin{figure}{section}
 \numberwithin{table}{section}
 \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{4pt}}m{#1}}
-\title{\textbf{Report of \textit{ncappc}\textsuperscript{*} package}}
-\author{\vspace{-0cm}}
-\date{\today}
+
 
 \begin{document}
-\raggedright{}
-\maketitle
-\thispagestyle{empty}
+\thispagestyle{empty}				% Remove page numbering on this page
+
+\colorbox{grey}{
+\parbox[t]{1.0\linewidth}{
+\printtitle 
+\vspace*{0.7cm}
+}}
 
 \vfill
-\textit{\textsuperscript{*} \textbf{ncappc} package is created and maintained by:}
-\newline
-\textit{Chayan Acharya, Andrew C. Hooker, Siv Jonsson, Mats O. Karlsson}
-\newline
-\textit{Department of Pharmaceutical Biosciences, Uppsala University, Sweden}
+\printauthor								% Print the author data as defined above
+\HRule{1pt}
 \clearpage
 
 \newpage{}
-\footnotesize
+\normalsize
 \tableofcontents
 \thispagestyle{empty}
 \clearpage
 \pagenumbering{arabic}
 
 <<echo=FALSE>>=
-options(width=60)
+options(width=80)
 listing <- function(x, options){
   paste("\\begin{lstlisting}[basicstyle=\\ttfamily,breaklines=true]\n",
   x, "\\end{lstlisting}\n", sep = "")
@@ -60,15 +116,15 @@ listing <- function(x, options){
 knit_hooks$set(source=listing, output=listing)
 @
 
+\normalsize
 \section{Summary of the data set and the results}
 
-<<main, echo=FALSE>>=
+<<main, echo=FALSE, cache=FALSE>>=
 arglist  <- fnOut$arglist
 case     <- fnOut$case
 txt      <- fnOut$TXT
 pddf     <- fnOut$pddf
-prnTab1  <- fnOut$prnTab1
-prnTab2  <- fnOut$prnTab2
+prnTab   <- fnOut$prnTab
 nsim     <- fnOut$NSIM
 conc     <- fnOut$conc
 histobs  <- fnOut$histobs
@@ -88,7 +144,7 @@ if(fnOut$spread=="ppi"){
 }
 @
 
-<<txt, echo=FALSE, tidy=TRUE>>=
+<<txt, echo=FALSE, tidy=TRUE, results='markup', cache=FALSE>>=
 cat(txt)
 @
 \paragraph{}
@@ -96,7 +152,7 @@ cat(txt)
 
 \begin{center}
 \textbf{Summary table}
-<< Summary table, echo=FALSE, results='asis'>>==
+<<Summary table, echo=FALSE, results='asis', cache=FALSE>>==
 suppressPackageStartupMessages(require(xtable))
 if(case==1) colform <- c(rep("p{1cm}",1),rep("p{2cm}",ncol(pddf)-1),"p{3cm}")
 if(case==2) colform <- c(rep("p{1cm}",2),rep("p{2cm}",ncol(pddf)-2),"p{3cm}")
@@ -111,8 +167,8 @@ print(mtable, file=paste(usrdir,"/sum.tex",sep=""), include.rownames=FALSE,
 \paragraph{}
 
 \footnotesize
-\section{Command-line arguments passed to ncappc function}
-<<cmd, echo=FALSE, listing=FALSE,source=FALSE,output=FALSE>>=
+\section{Command-line arguments passed to \textit{ncappc} function}
+<<cmd, echo=FALSE, results='markup', cache=FALSE>>=
 print(arglist)
 @
 
@@ -124,30 +180,22 @@ print(arglist)
 \begin{sloppypar}
 
 \subsection{Table 1 (ncaOutput.tsv)}
-The \textbf{\textit{ncappc}} functionality produces this table to report the estimated values of the NCA metrics described in the documentation for each individual along with other stratifiers (eg. population group ID, dose ID, etc.) if specified in the input command. The extension "tsv" stands for "tab separated variable", \textit{i.e.}, the columns in this table are separated by tabs. "NaN" or "NA" is produced for the NCA metrics which are irrelevant for the specified data type. This table also reports three additional columns for each of the eight NCA metrics that can be used for the diagnostics (AUClast, AUMClast, AUClower\_upper, Tmax, Cmax, HL\_Lambda\_z, AUCINF\_obs, AUCINF\_pred). The names of the additional columns for AUClast are simAUClast, dAUClast and npdeAUClast. simAUClast for an individual represents the mean of the estimated AUClast values obtained from the set of simulated data. dAUClast for an individual represents the deviation of the mean of the simulated AUClast values from the AUClast value obtained from the observed data, scaled by the "spread" of the simulated distribution as described in the corresponding command-line argument. npdeAUClast for an individual represents the NPDE value of AUClast estimated from the simulated data with respect to the value of AUClast estimated from the observed data. Similar names are assigned to the additional columns for the other seven metrics. Below is an excerpt of selected columns of top 100 rows.
+The \textbf{\textit{ncappc}} functionality produces this table to report the estimated values of the NCA metrics described in the documentation for each individual along with other stratifiers (eg. population group ID, dose ID, etc.) if specified in the input command. The extension "tsv" stands for "tab separated variable", \textit{i.e.}, the columns in this table are separated by tabs. "NaN" or "NA" is produced for the NCA metrics which are irrelevant for the specified data type. Below is an excerpt of selected columns of top 50 rows.
 
-\paragraph{}
-\begin{center}
-\textbf{Table 1. ncaOutput.tsv (selected columns of top 100 rows)}
-<< Final table, echo=FALSE, results='asis'>>==
-suppressPackageStartupMessages(require(xtable))
-if(case==1) colform <- c(rep("p{0.5cm}",2),rep("p{1.5cm}",ncol(prnTab2)-1))
-if(case==2) colform <- c(rep("p{0.5cm}",3),rep("p{1.5cm}",ncol(prnTab2)-2))
-if(case==3) colform <- c(rep("p{0.5cm}",4),rep("p{1.5cm}",ncol(prnTab2)-3))
-if(case==4) colform <- c(rep("p{0.5cm}",5),rep("p{1.5cm}",ncol(prnTab2)-4))
-print(xtable(prnTab2, align=colform, rotate.colnames = T, auto=TRUE), file=paste(usrdir,"/tab.tex",sep=""), include.rownames=FALSE,
-      tabular.environment="longtable", caption.placement = "top", size="\\tiny", floating=FALSE)
+
+<<FinalTable, echo=FALSE, results='asis', fig.env="table", cache=FALSE>>==
+source("makeLatexRepresentativeDataTable.R")
+makeLatexRepresentativeDataTable(dataDir="",dataFile=prnTab,iColWidth=7,iRowNums=50,strLabel="tab:repDataPK",strShortCaption="Representative portion of the ncaOutput.tsv file", strLongCaption="Representative portion of the ncaOutput.tsv file")
 @
-\input{tab}
-\end{center}
-\paragraph{}
 
+
+\newpage
 \footnotesize
 \subsection{Table 2 (Obs\_Stat.tsv)}
-A set of statistical parameters calculated for the entire population or the stratified population for the mean values of the following NCA metrics estimated from the simulated data: Tmax, Cmax, AUClast, AUClower\_upper, AUCINF\_obs, AUC\_pExtrap\_obs, AUCINF\_pred, AUC\_pExtrap\_pred, AUMClast, AUMCINF\_obs, AUMC\_pExtrap\_obs, AUMCINF\_pred, AUMC\_pExtrap\_pred, HL\_Lambda\_z, Rsq, Rsq\_adjusted, No\_points\_Lambda\_z obtained from the observed data. Brief description of the calculated statistical parameters: \textbf{Ntot} = Total number of data points, \textbf{Nunique} = number of unique data points, \textbf{Min} = minimum value, \textbf{Max} = maximum value, \textbf{Mean} = mean/average value, \textbf{SD} = standard deviation, \textbf{SE} = standard error, \textbf{CVp} = coefficient of variation \%, \textbf{a95CIu} = upper limit of 95\% arithmetic confidence interval, \textbf{a95CIl} = lower limit of 95\% arithmetic confidence interval, \textbf{gMean} = geometric mean, \textbf{gCVp} = geometric coefficient of variation \%.
+A set of statistical parameters calculated for the entire population or the stratified population for the median values of the following NCA metrics estimated from the obsrved data: Tmax, Cmax, AUClast, AUClower\_upper, AUCINF\_obs, AUC\_pExtrap\_obs, AUCINF\_pred, AUC\_pExtrap\_pred, AUMClast, AUMCINF\_obs, AUMC\_pExtrap\_obs, AUMCINF\_pred, AUMC\_pExtrap\_pred, HL\_Lambda\_z, Rsq, Rsq\_adjusted, No\_points\_Lambda\_z obtained from the observed data. Brief description of the calculated statistical parameters: \textbf{Ntot} = Total number of data points, \textbf{Nunique} = number of unique data points, \textbf{Min} = minimum value, \textbf{Max} = maximum value, \textbf{Mean} = mean/average value, \textbf{SD} = standard deviation, \textbf{SE} = standard error, \textbf{CVp} = coefficient of variation \%, \textbf{a95CIu} = upper limit of 95\% arithmetic confidence interval, \textbf{a95CIl} = lower limit of 95\% arithmetic confidence interval, \textbf{gMean} = geometric mean, \textbf{gCVp} = geometric coefficient of variation \%.
 
 \subsection{Table 3 (Sim\_Stat.tsv)}
-A set of statistical parameters calculated for the entire population or the stratified population for the mean values of the following NCA metrics estimated from the simulated data: Tmax, Cmax, AUClast, AUClower\_upper, AUCINF\_obs, AUC\_pExtrap\_obs, AUCINF\_pred, AUC\_pExtrap\_pred, AUMClast, AUMCINF\_obs, AUMC\_pExtrap\_obs, AUMCINF\_pred, AUMC\_pExtrap\_pred, HL\_Lambda\_z, Rsq, Rsq\_adjusted, No\_points\_Lambda\_z obtained from the estimated data. Brief description of the calculated statistical parameters: \textbf{Ntot} = Total number of data points, \textbf{Nunique} = number of unique data points, \textbf{Min} = minimum value , \textbf{Max} = maximum value, \textbf{Mean} = mean/average value, \textbf{SD} = standard deviation, \textbf{SE} = standard error, \textbf{CVp} = coefficient of variation \%, \textbf{a95CIu} = upper limit of 95\% arithmetic confidence interval, \textbf{a95CIl} = lower limit of 95\% arithmetic confidence interval, \textbf{gMean} = geometric mean, \textbf{gCVp} = geometric coefficient of variation \%.
+A set of statistical parameters calculated for the entire population or the stratified population for the median values of the following NCA metrics estimated from the simulated data: Tmax, Cmax, AUClast, AUClower\_upper, AUCINF\_obs, AUC\_pExtrap\_obs, AUCINF\_pred, AUC\_pExtrap\_pred, AUMClast, AUMCINF\_obs, AUMC\_pExtrap\_obs, AUMCINF\_pred, AUMC\_pExtrap\_pred, HL\_Lambda\_z, Rsq, Rsq\_adjusted, No\_points\_Lambda\_z obtained from the estimated data. Brief description of the calculated statistical parameters: \textbf{Ntot} = Total number of data points, \textbf{Nunique} = number of unique data points, \textbf{Min} = minimum value , \textbf{Max} = maximum value, \textbf{Mean} = mean/average value, \textbf{SD} = standard deviation, \textbf{SE} = standard error, \textbf{CVp} = coefficient of variation \%, \textbf{a95CIu} = upper limit of 95\% arithmetic confidence interval, \textbf{a95CIl} = lower limit of 95\% arithmetic confidence interval, \textbf{gMean} = geometric mean, \textbf{gCVp} = geometric coefficient of variation \%.
 
 \subsection{Table 4 (ncaSimData.tsv)}
 Simulated concentration-time profiles for each individual obtained from each simulation. "NSUB" column denotes the simulation number.
@@ -160,7 +208,7 @@ Estimated NCA metrics for each individual using the simulated concentration-time
 \section{Description of the graphical output}
 
 \subsection{Figure 1. [Individual level] Concentration \textit{vs.} time profile}
-<<concplot, echo=FALSE, fig.pos="H", fig.height=4, fig.width=6, out.width='0.7\\textwidth', fig.align="center">>=
+<<concplot, echo=FALSE, fig.pos="H", fig.height=4, fig.width=7, out.width='0.7\\textwidth', fig.align="center", cache=FALSE>>=
 if (length(conc)>0){
   for (i in 1:length(conc)){suppressMessages(suppressWarnings(grid.draw(conc[[i]]))); Sys.sleep(0.5); grid.newpage()}
 }else{
@@ -168,24 +216,24 @@ if (length(conc)>0){
 }
 @
 
-Concentration vs time profile for each individual stratified by dose or population group, if any, as obtained from the observed data. The left panels represent the raw data, while the right panels represent the semi-logarithmic form of the concentration data. Each of the lines represents individual data.
+Concentration vs time profile for each individual stratified by dose or population group, if any, as obtained from the observed data. The left panels represent the concentration data in linear scale, while the right panels represent the concentration data in semi-logarithmic scale. Each of the lines represents individual data.
 
 \newpage
 \subsection{Figure 2. [Population level] Histogram of the selected NCA metrics estimated from the observed data}
-<<histobsplot, echo=FALSE, fig.pos="H", out.width='0.9\\textwidth', fig.align='center'>>=
+<<histobsplot, echo=FALSE, fig.pos="H", fig.height=8, fig.width=7, out.width='0.8\\textwidth', fig.align='center', cache=FALSE>>=
 if (length(histobs)>0){
   suppressPackageStartupMessages(require(gridExtra))
   for (i in 1:length(histobs)){suppressMessages(suppressWarnings(grid.draw(histobs[[i]]))); Sys.sleep(0.5); grid.newpage()}
 }else{
-  cat("No histogram is available as the number of individuals is less than 5 in\nall population strata!")
+  print("No histogram is available as the number of individuals is less than 5 in\nall population strata!")
 }
 @
 
-Histogram of four selected NCA metrics (AUClast, AUCINF\_obs, Cmax, Tmax) estimated from the observed data. The solid blue vertical and dotted lines represent the population mean and the "spread" of the data. The "spread" is defined by \Sexpr{sprtxt} obtained from the observed data.
+Histogram of four selected NCA metrics (AUClast, AUCINF\_obs, Cmax, Tmax) estimated from the observed data. The solid blue vertical and dotted lines represent the population median and the "spread" of the data. The "spread" is defined by \Sexpr{sprtxt} obtained from the observed data.
 
 \newpage
-\subsection{Figure 3. [Population level] Histogram of the simulated population means of the NCA metrics}
-<<popplot, echo=FALSE, fig.pos="H", fig.height=8, fig.width=4, out.width='0.9\\textwidth', fig.align='center'>>=
+\subsection{Figure 3. [Population level] Histogram of the simulated population medians of the NCA metrics}
+<<popplot, echo=FALSE, fig.pos="H", fig.height=hth+2, fig.width=wth, out.width='0.8\\textwidth', fig.align='center', cache=FALSE>>=
 if (length(pop)>0){
   suppressPackageStartupMessages(require(gridExtra))
   for (i in 1:length(pop)){suppressMessages(suppressWarnings(grid.draw(pop[[i]]))); Sys.sleep(0.5); grid.newpage()}
@@ -194,11 +242,11 @@ if (length(pop)>0){
 }
 @
 
-Histogram of the population mean of the NCA metrics obtained from the simulated data from the \Sexpr{round(nsim)} simulations. The red and blue solid vertical lines represent the population mean of the NCA metric obtained from the observed data and the mean of the population means of the same NCA metric obtained from the \Sexpr{round(nsim)} number of simulations, respectively. The blue dashed vertical lines represent the "spread" of the simulated distribution. The "spread" is defined by \Sexpr{sprtxt} obtained from the simulated data.
+Histogram of the population median of the NCA metrics obtained from the simulated data from the \Sexpr{round(nsim)} simulations. The red and blue solid vertical lines represent the population median of the NCA metric obtained from the observed data and the median of the population medians of the same NCA metric obtained from the \Sexpr{round(nsim)} number of simulations, respectively. The blue dashed vertical lines represent the "spread" of the simulated distribution. The "spread" is defined by \Sexpr{sprtxt} obtained from the simulated data.
 
 \newpage
 \subsection{Figure 4. [Individual level] Deviation of the simulated NCA metrics from the observed value}
-<<devplot, echo=FALSE, fig.pos="H", out.width='0.9\\textwidth', fig.align='center'>>=
+<<devplot, echo=FALSE, fig.pos="H", fig.height=hth+1, fig.width=wth, out.width='0.8\\textwidth', fig.align='center', cache=FALSE>>=
 if (length(dev)>0){
   for (i in 1:length(dev)){suppressMessages(suppressWarnings(print(dev[[i]]))); Sys.sleep(0.5)}
 }else{
@@ -206,25 +254,25 @@ if (length(dev)>0){
 }
 @
 
-Deviation of the mean of the NCA metrics for each individual estimated from the simulated data obtained from \Sexpr{round(nsim)} simulations (meanSim) from the corresponding values estimated from the observed data (Obs). The deviation is scaled by the boundary of the "spread" of the simulated data (\Sexpr{sprtxt}) proximal to the observed value (\textbf{Deviation = (Obs - meanSim)/ spread}). The negative value of the deviation signifies over-prediction of the corresponding NCA metric, while a positive value of the deviation signifies under-prediction of the same.
+Deviation of the median of the NCA metrics for each individual estimated from the simulated data obtained from \Sexpr{round(nsim)} simulations (medianSim) from the corresponding values estimated from the observed data (Obs). The deviation is scaled by the boundary of the "spread" of the simulated data (\Sexpr{sprtxt}) proximal to the observed value (\textbf{Deviation = (Obs - medianSim)/ spread}). The negative value of the deviation signifies over-prediction of the corresponding NCA metric, while a positive value of the deviation signifies under-prediction of the same.
 
 \newpage
 \subsection{Figure 5. [Individual level] Distribution of the simulated NCA metrics for the outliers}
-<<outlierplot, echo=FALSE, fig.pos="H", out.width='0.9\\textwidth', fig.align='center'>>=
+<<outlierplot, echo=FALSE, fig.pos="H", fig.height=hth+2, fig.width=wth, out.width='0.9\\textwidth', fig.align='center', cache=FALSE>>=
 if (length(outlier)>0){
   suppressPackageStartupMessages(require(gridExtra))
   for (i in 1:length(outlier)){suppressMessages(suppressWarnings(grid.draw(outlier[[i]]))); Sys.sleep(0.5); grid.newpage()}
 }else{
-  cat("No outlier plot is available as the number of outlier is 0!")
+  print("No outlier plot is available as the number of outlier is 0!")
 }
 @
 
-Distribution of the NCA metrics obtained from the simulated data for the outlier individuals. The individuals are labelled as outliers because the absolute value of the scaled deviation for at least one of the NCA metrics used in diagnosis is larger than 1. The red and blue solid vertical lines represent the observed NCA metric value and the mean of the simulated NCA metric values for that individual, respectively. The dashed blue vertical lines represent the "spread" (\Sexpr{sprtxt}) of the simulated distribution.
+Distribution of the NCA metrics obtained from the simulated data for the outlier individuals. The individuals are labelled as outliers because the absolute value of the scaled deviation for at least one of the NCA metrics used in diagnosis is larger than 1. The red and blue solid vertical lines represent the observed NCA metric value and the median of the simulated NCA metric values for that individual, respectively. The dashed blue vertical lines represent the "spread" (\Sexpr{sprtxt}) of the simulated distribution.
 
 
 \newpage
 \subsection{Figure 6. [Population level] Histogram of the NPDE values of the NCA metrics within a given population group}
-<<histnpdeplot, echo=FALSE, fig.pos="H", out.width='0.9\\textwidth', fig.align='center'>>=
+<<histnpdeplot, echo=FALSE, fig.pos="H", fig.height=hth+1, fig.width=wth, out.width='0.8\\textwidth', fig.align='center', cache=FALSE>>=
 if (length(histnpde)>0){
   for (i in 1:length(histnpde)){suppressMessages(suppressWarnings(print(histnpde[[i]]))); Sys.sleep(0.5)}
 }else{
@@ -237,7 +285,7 @@ Histogram of the NPDE values of the NCA metrics for all individuals within a giv
 
 \newpage
 \subsection{Figure 7. [Population level] Forest plot for the NPDE type analysis}
-<<forestplot, echo=FALSE, fig.pos="H", out.width='1\\textwidth', fig.align='center'>>=
+<<forestplot, echo=FALSE, fig.pos="H", fig.height=hth, fig.width=wth, out.width='1\\textwidth', fig.align='center', cache=FALSE>>=
 if (length(forest)>0){
   for (i in 1:length(forest)){suppressMessages(suppressWarnings(print(forest[[i]]))); Sys.sleep(0.5)}
 }else{
@@ -250,7 +298,7 @@ Forest plot of the NPDE type analysis displaying the mean and standard deviation
 
 \newpage
 \subsection{Figure 8. [Individual level] NPDE values of the NCA metrics for each individual}
-<<npdeplot, echo=FALSE, fig.pos="H", out.width='0.9\\textwidth', fig.align='center'>>=
+<<npdeplot, echo=FALSE, fig.pos="H", fig.height=hth, fig.width=wth, out.width='0.9\\textwidth', fig.align='center', cache=FALSE>>=
 if (length(npde)>0){
   for (i in 1:length(npde)){suppressMessages(suppressWarnings(print(npde[[i]]))); Sys.sleep(0.5)}
 }else{

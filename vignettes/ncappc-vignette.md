@@ -1,12 +1,12 @@
+%\VignetteIndexEntry{ncappc}
+%\VignetteEngine{knitr::knitr}
 ---
 title: "ncappc"
 author: "Chayan Acharya, Andrew C. Hooker, Siv Jonsson, Mats O. Karlsson"
-
-
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{ncappc}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\usepackage[utf8]{inputenc}
 ---
 
@@ -32,7 +32,6 @@ In the presence of the non-empty simFile argument (NONMEM output file with the s
 # Command-line arguments
 
 
-
 **Name** | **Description** | **Example of possible values** | **Default**
 :-------:|:---------------:|:------------------------------:|:-----------:
 obsFile | Observed concentration-time data from an internal data frame or an external table with comma, tab or space as separator | File name or data frame | **"nca_original.npctab.dta"**
@@ -56,6 +55,7 @@ concNmObs | Column name for concentration in observed data | Column name | **"DV
 idNmSim | Column name for ID in simulated data | Column name | **"ID"**
 timeNmSim | Column name for time in simulated data | Column name | **"TIME"**
 concNmSim | Column name for concentration in simulated data | Column name | **"DV"**
+onlyNCA | Only NCA is performed and ppc part is ignored although simFile is not \code{NULL} | Logical (TRUE or FALSE) | **FALSE**
 AUCTimeRange | User-defined window of time used to estimate AUC | c(0,24) | **NULL**
 backExtrp | If back-extrapolation is needed for AUC | Logical (TRUE or FALSE) | **FALSE**
 LambdaTimeRange | User-defined window of time to estimate elimination rate-constant | c(15,24) | **NULL**
@@ -82,7 +82,7 @@ dateFormat | Data format for date | "D-M-Y", "D/M/Y" or any other combination of
 spread | Measure of the spread of simulated data | "ppi" (95\% parametric prediction interval) or "npi" (95\% nonparametric prediction interval)) | **"npi"**
 tabCol | Output columns to be printed in the report in addition to ID, dose and population strata information | list of NCA metrics in a string array | **c("AUClast", "Cmax", "Tmax", "AUCINF_obs", "Vz_obs", "Cl_obs", "HL_Lambda_z")**
 figFormat | Format of the produced figures | "bmp", "jpeg", "tiff", "png" | **"tiff"**
-noPlot | Perform only NCA calculations without any plot generation | Logical (TRUE or FALSE) | **FALSE**
+noPlot | Perform only calculations without any plot generation | Logical (TRUE or FALSE) | **FALSE**
 printOut | Write/print output on the disk. No plot will be saved if noPlot is set to TRUE | Logical (TRUE or FALSE) | **TRUE**
 studyName | Name of the study to be added as a description in the report | Study name | **NULL**
 new_data_method | For testing a faster method of reading data | Logical (TRUE or FALSE) | **TRUE**
