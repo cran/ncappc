@@ -1,35 +1,79 @@
-ncappc: NCA Calculations and Population Model Diagnosis
-======
 
-[![Travis-CI Build Status](https://travis-ci.org/UUPharmacometrics/ncappc.svg?branch=master)](https://travis-ci.org/UUPharmacometrics/ncappc)
-[![AppVeyor status](https://ci.appveyor.com/api/projects/status/q84ds9j9jbl30s2q?svg=true)](https://ci.appveyor.com/project/andrewhooker/ncappc)
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# ncappc: NCA Calculations and population model diagnosis
+
+<!-- badges: start -->
+
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/ncappc)](https://CRAN.R-project.org/package=ncappc)
-[![codecov.io](https://codecov.io/github/UUPharmacometrics/ncappc/coverage.svg?branch=master)](https://codecov.io/github/UUPharmacometrics/ncappc?branch=master)
+[![R-CMD-check](https://github.com/UUPharmacometrics/ncappc/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/UUPharmacometrics/ncappc/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/UUPharmacometrics/ncappc/graph/badge.svg)](https://app.codecov.io/gh/UUPharmacometrics/ncappc)
+<!-- badges: end -->
 
-A flexible tool that can perform: 
-1. Traditional non-compartmental analysis (NCA) and 
-2. Simulation-based posterior predictive checks for population
-    pharmacokinetic (PK) and/or pharmacodynamic (PKPD) models using NCA metrics. 
-    
+ncappc performs NCA Calculations and population model diagnosis using
+posterior predictive checks generated from data simulated by a
+population model.
+
+ncappc is a flexible tool that can perform:
+
+1.  Traditional non-compartmental analysis (NCA) and
+2.  Simulation-based posterior predictive checks for population
+    pharmacokinetic (PK) and/or pharmacodynamic (PKPD) models using NCA
+    metrics.
+
+You can read more at the [website for the stable version of
+ncappc](https://uupharmacometrics.github.io/ncappc/) or the [website for
+the development version of
+ncappc](https://uupharmacometrics.github.io/ncappc/dev/)
+
 ## Installation
 
-You need to have R installed.  Download the latest version of R from www.r-project.org.
-Install ncappc in R using one of the following methods:
+You need to have R installed. Download the latest version of R from
+www.r-project.org.
 
-* latest stable release -- From CRAN.  Write at the R command line:
+You can install the latest stable release from CRAN:
 
-```r
+``` r
 install.packages("ncappc")
 ```
 
-* Latest development version -- from Github. Note that the command below installs the "master" 
-(development) branch; if you want the release branch from Github add `ref="release"` to the
-`install_github()` call. The `install_github()` approach requires that you build from source, 
-i.e. `make` and compilers must be installed on your system -- see the R FAQ for your operating system; 
-you may also need to install dependencies manually.
+You can install the development version of ncappc from
+[GitHub](https://github.com/) with:
 
-```r
-devtools::install_github("UUPharmacometrics/ncappc",build_vignettes=TRUE)
+``` r
+# install.packages("pak")
+pak::pak("UUPharmacometrics/ncappc")
 ```
 
+<!-- ## Example -->
 
+<!-- This is a basic example which shows you how to solve a common problem: -->
+
+<!-- ```{r example} -->
+
+<!-- library(ncappc) -->
+
+<!-- ## basic example code -->
+
+<!-- ``` -->
+
+<!-- What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so: -->
+
+<!-- ```{r cars} -->
+
+<!-- summary(cars) -->
+
+<!-- ``` -->
+
+<!-- You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. -->
+
+<!-- You can also embed plots, for example: -->
+
+<!-- ```{r pressure, echo = FALSE} -->
+
+<!-- plot(pressure) -->
+
+<!-- ``` -->
+
+<!-- In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN. -->

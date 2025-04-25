@@ -28,6 +28,7 @@
 #' @param sim_num Should the function add a column to the returned data frame 
 #'   that identifies the simulation number (if present)?
 #' @param sim_name The name of the resulting column in the returned data frame if \code{sim_num} is true.
+#' @param verbose Should the output be more verbose for error checking?
 #'   
 #' @return Returns a data frame of the simulated table with an added column for 
 #'   the simulation number. The data frame is given class \code{c("tbl_df", 
@@ -40,7 +41,8 @@ read_nm_table <- function (nm_table,
                            method="default",
                            quiet=TRUE,
                            sim_num=FALSE,
-                           sim_name="NSIM"){
+                           sim_name="NSIM",
+                           verbose = FALSE){
   
   # \code{\link[dplyr]{dplyr}} and \code{\link[readr]{readr}} are available and
   # \code{\link[readr]{readr}} (version >= 0.2.2).
@@ -72,26 +74,49 @@ read_nm_table <- function (nm_table,
     header_names <- strsplit(header_line,"\\s+,*\\s*")[[1]]
     
     if(!comma_sep){
-      tab_dat <- readr::read_table(nm_table, col_names = header_names, 
-                                   col_types=paste0(rep("d",length(header_names)),collapse = ""),
-                                   skip = 2) 
+      if(verbose){
+        tab_dat <- readr::read_table(nm_table, col_names = header_names, 
+                                     col_types=paste0(rep("d",length(header_names)),collapse = ""),
+                                     skip = 2)
+      } else {
+        tab_dat <- suppressWarnings(readr::read_table(nm_table, col_names = header_names, 
+                                                      col_types=paste0(rep("d",length(header_names)),collapse = ""),
+                                                      skip = 2))
+      }
     } else {
-      tab_dat <- readr::read_csv(nm_table, col_names = header_names, 
-                                 col_types=paste0(rep("d",length(header_names)),collapse = ""),
-                                 skip = 2) 
+      if(verbose){
+        tab_dat <- readr::read_csv(nm_table, col_names = header_names, 
+                                   col_types=paste0(rep("d",length(header_names)),collapse = ""),
+                                   skip = 2)
+      } else {
+        tab_dat <- suppressWarnings(readr::read_csv(nm_table, col_names = header_names, 
+                                                    col_types=paste0(rep("d",length(header_names)),collapse = ""),
+                                                    skip = 2))
+      }
     }
     
     # Handle multiple simulations
     if(any(is.na(tab_dat[1]))){ 
       if(sim_num){
         ## create simulation number
-        args <- lazyeval::interp(~ cumsum(is.na(var))+1, var = as.name(names(tab_dat)[1]))
-        tab_dat <- dplyr::mutate_(tab_dat,NSIM=args)
+        if (packageVersion("dplyr") >= "0.7.0") {
+          var <- names(tab_dat)[1]
+          tab_dat <- dplyr::mutate(tab_dat,NSIM=cumsum(is.na(.data[[var]]))+1)
+        } else { # use the depreciated dplyr function
+          args <- lazyeval::interp(~ cumsum(is.na(var))+1, var = as.name(names(tab_dat)[1]))
+          tab_dat <- dplyr::mutate_(tab_dat,NSIM=args)
+        }
       }
       
       ## filter out NA columns
-      args <- lazyeval::interp(~ !is.na(var), var = as.name(names(tab_dat)[1]))
-      tab_dat <- dplyr::filter_(tab_dat,args)
+      if (packageVersion("dplyr") >= "0.7.0") {
+        var <- names(tab_dat)[1]
+        tab_dat <- dplyr::filter(tab_dat,!is.na(.data[[var]]))
+      } else { # use the depreciated dplyr function
+        args <- lazyeval::interp(~ !is.na(var), var = as.name(names(tab_dat)[1]))
+        tab_dat <- dplyr::filter_(tab_dat,args)
+      }
+
     }
     return(tab_dat)
   }
@@ -253,7 +278,11 @@ read_nm_table <- function (nm_table,
   if(sim_num) names(tab_dat)[match("NSIM",names(tab_dat))] <- sim_name
   
   tab_dat <- data.frame(tab_dat)
-  tab_dat <- dplyr::as_data_frame(tab_dat)
-  
+  if (packageVersion("tibble") >= "2.0.0") {
+    tab_dat <- tibble::as_tibble(tab_dat)
+  } else { # use the depreciated dplyr function
+    tab_dat <- dplyr::as_data_frame(tab_dat)
+  }
+
   return(tab_dat)
 }

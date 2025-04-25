@@ -4,8 +4,15 @@
 \alias{read_nm_table}
 \title{Read NONMEM table files produced.}
 \usage{
-read_nm_table(nm_table, only_obs = FALSE, method = "default",
-  quiet = TRUE, sim_num = FALSE, sim_name = "NSIM")
+read_nm_table(
+  nm_table,
+  only_obs = FALSE,
+  method = "default",
+  quiet = TRUE,
+  sim_num = FALSE,
+  sim_name = "NSIM",
+  verbose = FALSE
+)
 }
 \arguments{
 \item{nm_table}{The NONMEM table file to read. A text string. If \code{dplyr}
@@ -33,6 +40,8 @@ doing?}
 that identifies the simulation number (if present)?}
 
 \item{sim_name}{The name of the resulting column in the returned data frame if \code{sim_num} is true.}
+
+\item{verbose}{Should the output be more verbose for error checking?}
 }
 \value{
 Returns a data frame of the simulated table with an added column for 
